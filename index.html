@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Inner Work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================== [CSS] [THEME] ============================== */
+:root{
+  --background: 182 73% 7%;
+  --foreground: 45 30% 90%;
+  --border: 140 10% 20%;
+  --card: 140 15% 15%;
+  --card-foreground: 45 30% 90%;
+  --primary: 150 20% 40%;
+  --primary-foreground: 45 30% 95%;
+  --secondary: 130 15% 20%;
+  --secondary-foreground: 45 20% 80%;
+  --muted: 130 10% 20%;
+  --muted-foreground: 45 10% 65%;
+  --accent: 140 25% 30%;
+  --accent-foreground: 45 30% 95%;
+  --destructive: 0 50% 40%;
+  --destructive-foreground: 45 30% 90%;
+  --sidebar: 140 18% 10%;
+  --sidebar-foreground: 45 30% 85%;
+  --sidebar-border: 140 10% 18%;
+  --sidebar-accent: 140 15% 20%;
+  --sidebar-accent-foreground: 45 40% 95%;
+  --radius: 0.75rem;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-mono: Menlo, Consolas, monospace;
+}
+*{ box-sizing:border-box; }
+html,body{ height:100%; }
+body{
+  margin:0; background:hsl(var(--background)); color:hsl(var(--foreground));
+  font-family:var(--font-sans); -webkit-font-smoothing:antialiased;
+}
+h1,h2,h3{ font-family:var(--font-serif); font-weight:400; margin:0; letter-spacing:-0.01em; }
+p{ margin:0; }
+button{ font-family:inherit; color:inherit; }
+a{ color:inherit; text-decoration:none; }
+::selection{ background:hsl(var(--accent) / 0.5); }
+:focus-visible{ outline:2px solid hsl(var(--ring, 150 30% 50%)); outline-offset:2px; }
+
+/* layout */
+#app{ display:flex; height:100%; width:100%; flex-direction:column; }
+@media(min-width:768px){ #app{ flex-direction:row; } }
+
+.sidebar{
+  display:none; flex-direction:column; width:15rem; flex-shrink:0;
+  border-right:1px solid hsl(var(--sidebar-border)); background:hsl(var(--sidebar) / 0.5);
+  backdrop-filter:blur(20px);
+}
+@media(min-width:768px){ .sidebar{ display:flex; } }
+.sidebar-header{ padding:1.5rem 1.5rem 1rem; }
+.sidebar-title{ font-size:1.25rem; color:hsl(var(--sidebar-foreground)); }
+.sidebar-sub{ font-size:0.75rem; color:hsl(var(--sidebar-foreground) / 0.4); margin-top:0.25rem; }
+.sidebar-nav{ flex:1; padding:0 0.75rem 1rem; display:flex; flex-direction:column; gap:0.25rem; overflow-y:auto; }
+.nav-link{
+  display:flex; align-items:center; gap:0.75rem; padding:0.5rem 0.75rem; border-radius:0.5rem;
+  font-size:0.875rem; font-weight:500; color:hsl(var(--sidebar-foreground) / 0.6); transition:background .15s,color .15s;
+}
+.nav-link:hover{ background:hsl(var(--sidebar-accent) / 0.4); color:hsl(var(--sidebar-foreground)); }
+.nav-link.active{ background:hsl(var(--sidebar-accent)); color:hsl(var(--sidebar-accent-foreground)); }
+.nav-icon{ font-size:1rem; width:1.25rem; text-align:center; flex-shrink:0; }
+
+main.content{ flex:1; overflow-y:auto; padding:1rem 1rem 7rem; }
+@media(min-width:768px){ main.content{ padding:2rem; padding-bottom:2rem; } }
+.content-inner{ max-width:48rem; margin:0 auto; }
+
+.mobile-nav{
+  display:flex; position:fixed; bottom:0; left:0; right:0; z-index:50;
+  border-top:1px solid hsl(var(--border)); background:hsl(var(--background) / 0.95); backdrop-filter:blur(20px);
+  padding:0.5rem 0.25rem calc(4px + env(safe-area-inset-bottom));
+  justify-content:space-around; align-items:center;
+}
+@media(min-width:768px){ .mobile-nav{ display:none; } }
+.mobile-link{ display:flex; flex-direction:column; align-items:center; gap:2px; padding:0.25rem 0.35rem; border-radius:0.75rem; color:hsl(var(--muted-foreground)); flex:1; min-width:0; }
+.mobile-link.active{ color:hsl(var(--primary)); }
+.mobile-link .nav-icon{ font-size:1.15rem; }
+.mobile-link span{ font-size:9px; font-weight:500; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; }
+
+/* typography helpers */
+.h1{ font-size:1.875rem; }
+.muted{ color:hsl(var(--muted-foreground)); }
+.mt-1{ margin-top:0.25rem; }
+.text-xs{ font-size:0.75rem; }
+.text-sm{ font-size:0.875rem; }
+.italic{ font-style:italic; }
+.uppercase-label{ font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:0.06em; color:hsl(var(--muted-foreground)); }
+
+/* stacks / layout helpers */
+.stack-2 > * + *{ margin-top:0.5rem; }
+.stack-3 > * + *{ margin-top:0.75rem; }
+.stack-4 > * + *{ margin-top:1rem; }
+.stack-5 > * + *{ margin-top:1.25rem; }
+.stack-6 > * + *{ margin-top:1.5rem; }
+.stack-8 > * + *{ margin-top:2rem; }
+.row{ display:flex; align-items:center; }
+.row-gap-2{ gap:0.5rem; }
+.row-gap-3{ gap:0.75rem; }
+.between{ justify-content:space-between; }
+.wrap{ flex-wrap:wrap; }
+.fade-in{ animation:fadeIn .4s ease; }
+@keyframes fadeIn{ from{ opacity:0; transform:translateY(6px);} to{ opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce){ .fade-in{ animation:none; } }
+.border-t{ border-top:1px solid hsl(var(--border)); }
+.pt-4{ padding-top:1rem; }
+.pt-6{ padding-top:1.5rem; }
+.pt-8{ padding-top:2rem; }
+.hidden{ display:none !important; }
+
+/* cards */
+.card{ background:hsl(var(--card) / 0.5); border:1px solid hsl(var(--border)); border-radius:var(--radius); }
+.card-solid{ background:hsl(var(--card) / 0.9); border:1px solid hsl(var(--border)); border-radius:var(--radius); }
+.card-faint{ background:hsl(var(--card) / 0.3); border:1px solid hsl(var(--border)); border-radius:var(--radius); }
+.card-header{ padding:1.25rem 1.25rem 0.5rem; }
+.card-title{ font-size:1.125rem; font-family:var(--font-sans); font-weight:600; margin:0; }
+.card-content{ padding:1.25rem; }
+.card-content.tight{ padding:1rem; }
+
+/* buttons */
+.btn{
+  display:inline-flex; align-items:center; justify-content:center; gap:0.5rem;
+  height:2.5rem; padding:0 1rem; border-radius:0.5rem; font-size:0.875rem; font-weight:500;
+  border:1px solid transparent; cursor:pointer; transition:background .15s,opacity .15s,color .15s; white-space:nowrap;
+}
+.btn:disabled{ opacity:0.45; cursor:not-allowed; }
+.btn-default{ background:hsl(var(--primary)); color:hsl(var(--primary-foreground)); }
+.btn-default:hover:not(:disabled){ opacity:0.88; }
+.btn-outline{ background:transparent; border-color:hsl(var(--border)); color:hsl(var(--foreground)); }
+.btn-outline:hover:not(:disabled){ background:hsl(var(--accent) / 0.15); }
+.btn-ghost{ background:transparent; color:hsl(var(--foreground)); }
+.btn-ghost:hover:not(:disabled){ background:hsl(var(--accent) / 0.2); }
+.btn-destructive-outline{ background:transparent; border-color:hsl(var(--destructive) / 0.4); color:hsl(0 70% 65%); }
+.btn-destructive-outline:hover:not(:disabled){ background:hsl(var(--destructive) / 0.12); }
+.btn-sm{ height:2rem; padding:0 0.75rem; font-size:0.8rem; }
+.btn-icon{ height:2rem; width:2rem; padding:0; }
+.btn-w-full{ width:100%; }
+.btn-lg{ height:3rem; font-size:1rem; font-weight:600; }
+
+/* inputs */
+.field{ display:flex; flex-direction:column; gap:0.4rem; }
+.label{ font-size:0.85rem; font-weight:500; color:hsl(var(--foreground) / 0.85); }
+.input, .textarea, select.input{
+  width:100%; background:hsl(var(--background)); border:1px solid hsl(var(--border)); color:hsl(var(--foreground));
+  border-radius:0.5rem; padding:0.55rem 0.75rem; font-size:0.9rem; font-family:inherit;
+}
+.textarea{ min-height:100px; resize:vertical; line-height:1.5; }
+.input:focus, .textarea:focus{ outline:2px solid hsl(var(--primary) / 0.6); outline-offset:1px; border-color:hsl(var(--primary)); }
+.input-sm{ height:1.75rem; width:6rem; padding:0.15rem 0.5rem; font-size:0.85rem; }
+
+/* chips / badges */
+.chip-row{ display:flex; flex-wrap:wrap; gap:0.5rem; }
+.chip{ padding:0.5rem 1rem; border-radius:999px; border:1px solid hsl(var(--border)); background:hsl(var(--background)); color:hsl(var(--foreground)); font-size:0.85rem; cursor:pointer; transition:all .15s; }
+.chip:hover{ border-color:hsl(var(--primary) / 0.5); }
+.chip-active{ background:hsl(var(--primary)); color:hsl(var(--primary-foreground)); border-color:hsl(var(--primary)); }
+.chip-sm{ padding:0.25rem 0.75rem; font-size:0.75rem; }
+.badge{ font-size:0.75rem; padding:0.15rem 0.6rem; border-radius:999px; background:hsl(var(--accent)); color:hsl(var(--accent-foreground)); display:inline-block; }
+.badge-outline{ font-size:0.75rem; padding:0.2rem 0.6rem; border-radius:999px; border:1px solid hsl(var(--border)); color:hsl(var(--muted-foreground)); display:inline-block; }
+
+/* zone slider */
+.zone-labels{ display:flex; justify-content:space-between; font-size:0.75rem; font-weight:500; padding:0 0.25rem; }
+.zone-track{ position:relative; height:2.5rem; border-radius:999px; }
+.zone-gradient{ position:absolute; inset:0; border-radius:999px; background:linear-gradient(to right,#60a5fa 0%,#4ade80 28%,#fb923c 52%,#f87171 76%,#ef4444 100%); }
+.zone-thumb{ position:absolute; top:0; bottom:0; width:6px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.4); border-radius:3px; pointer-events:none; transform:translateX(-50%); transition:left .05s; }
+.zone-input{ position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; margin:0; }
+.zone-label-text{ text-align:center; font-weight:600; }
+
+/* grid helpers */
+.grid-2{ display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+.grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:0.75rem; }
+.grid-4{ display:grid; grid-template-columns:repeat(2,1fr); gap:0.75rem; }
+@media(min-width:640px){ .grid-4{ grid-template-columns:repeat(4,1fr); } }
+.grid-parts{ display:grid; grid-template-columns:1fr 1fr; gap:0.6rem; }
+@media(min-width:640px){ .grid-parts{ grid-template-columns:repeat(4,1fr); } }
+
+/* progress bar */
+.progress{ height:6px; width:100%; border-radius:999px; background:hsl(var(--border)); overflow:hidden; }
+.progress > div{ height:100%; border-radius:999px; transition:width .2s; }
+
+/* modal / overlay */
+.overlay{ position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:100; display:flex; align-items:center; justify-content:center; padding:1rem; animation:fadeIn .15s ease; }
+.dialog{ background:hsl(var(--card)); border:1px solid hsl(var(--border)); border-radius:var(--radius); width:100%; max-width:26rem; max-height:88vh; overflow-y:auto; padding:1.25rem; box-shadow:0 10px 40px rgba(0,0,0,.5); }
+.dialog-title{ font-size:1.05rem; font-weight:600; font-family:var(--font-sans); margin:0 0 0.25rem; }
+.sheet-overlay{ position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:100; display:flex; align-items:flex-end; justify-content:center; }
+.sheet{ background:hsl(var(--card)); border:1px solid hsl(var(--border)); border-top-left-radius:1.25rem; border-top-right-radius:1.25rem; width:100%; max-width:48rem; max-height:85vh; overflow-y:auto; padding:1.25rem 1.25rem 2rem; animation:slideUp .2s ease; }
+@keyframes slideUp{ from{ transform:translateY(30px); opacity:0;} to{ transform:none; opacity:1;} }
+
+/* mood/gym cards */
+.list-card{ display:flex; align-items:center; gap:0.75rem; padding:0.75rem 1rem; border-radius:0.75rem; background:hsl(var(--card) / 0.3); border:1px solid hsl(var(--border)); cursor:pointer; transition:background .15s; text-align:left; width:100%; }
+.list-card:hover{ background:hsl(var(--card) / 0.6); }
+.dot{ width:0.75rem; height:0.75rem; border-radius:999px; flex-shrink:0; }
+.trunc{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.line-clamp-2{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.min-w-0{ min-width:0; }
+.flex-1{ flex:1; }
+
+footer.app-footer{ text-align:center; padding:2rem 0 1rem; font-size:0.7rem; color:hsl(var(--muted-foreground) / 0.6); }
+
+/* Gym page: brighter text per request — bumps dim/muted text to near-white, leaves
+   intentional colour-coding (mood, rating, trend, trophy) untouched. */
+#page-content.gym-page{ color:#fff; }
+#page-content.gym-page .muted,
+#page-content.gym-page .uppercase-label,
+#page-content.gym-page .badge-outline{ color:rgba(255,255,255,.78); }
+#page-content.gym-page [style*="--muted-foreground"]{ color:rgba(255,255,255,.78) !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h1 class="sidebar-title">inner work</h1>
+      <p class="sidebar-sub">your space to process — offline copy</p>
+    </div>
+    <nav class="sidebar-nav" id="nav-desktop"></nav>
+  </aside>
+
+  <main class="content">
+    <div class="content-inner" id="page-content"></div>
+  </main>
+
+  <nav class="mobile-nav" id="nav-mobile"></nav>
+</div>
+
+<div id="modal-root"></div>
+<div id="sheet-root"></div>
+
+<script>
+/* ============================== [STATE] ============================== */
+const STORAGE_KEY = 'inner_work_state_v1';
+const DEFAULT_STATE = { seq: 1, mood: [], triggers: [], exercises: [], gymSessions: [], diet: [], budgetItems: {}, budgetSavings: [], hobbies: [], mealLibrary: [], mealPlan: {}, gymPlan: {} };
+let storageOk = true;
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return Object.assign({}, DEFAULT_STATE, JSON.parse(raw));
+  }catch(e){ storageOk = false; }
+  return JSON.parse(JSON.stringify(DEFAULT_STATE));
+}
+let state = loadState();
+function save(){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e){ storageOk = false; }
+}
+function nextId(){ const id = state.seq; state.seq += 1; return id; }
+
+function esc(str){
+  return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ---- date helpers (no dependency) ---- */
+const WEEKDAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function pad(n){ return n < 10 ? '0' + n : '' + n; }
+function timeStr(d){ let h=d.getHours(); const m=d.getMinutes(); const ampm=h>=12?'PM':'AM'; h=h%12; if(h===0) h=12; return h+':'+pad(m)+' '+ampm; }
+function fmtShort(d){ return MONTHS[d.getMonth()].slice(0,3)+' '+d.getDate()+', '+timeStr(d); }
+function fmtFull(d){ return WEEKDAYS[d.getDay()]+', '+MONTHS[d.getMonth()].slice(0,3)+' '+d.getDate()+' '+d.getFullYear()+' · '+timeStr(d); }
+function fmtDay(d){ return WEEKDAYS[d.getDay()]+', '+MONTHS[d.getMonth()].slice(0,3)+' '+d.getDate(); }
+function fmtMonthYear(d){ return MONTHS[d.getMonth()]+' '+d.getFullYear(); }
+function fmtDateOnly(d){ return MONTHS[d.getMonth()].slice(0,3)+' '+d.getDate()+', '+d.getFullYear(); }
+function monthKey(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1); }
+function durationStrict(ms){
+  const sec = Math.max(1, Math.round(ms/1000));
+  const units = [['year',31536000],['month',2592000],['day',86400],['hour',3600],['minute',60],['second',1]];
+  for (const [name, secs] of units){
+    if (sec >= secs){ const v = Math.max(1, Math.round(sec/secs)); return v+' '+name+(v!==1?'s':''); }
+  }
+  return '1 second';
+}
+
+/* ============================== [ROUTER] ============================== */
+const NAV_ITEMS = [
+  { name:'Mood', href:'#/mood', icon:'🧭' },
+  { name:'Triggers', href:'#/triggers', icon:'🧠' },
+  { name:'Health', href:'#/gym', icon:'🏋️' },
+  { name:'Hobbies', href:'#/hobbies', icon:'🎮' },
+  { name:'Budget', href:'#/budget', icon:'💰' },
+];
+const PAGES = { mood: renderMood, triggers: renderTriggers, gym: renderGym, budget: renderBudget, hobbies: renderHobbies };
+
+function currentRoute(){
+  const h = location.hash.replace('#','').replace(/^\//,'') || 'mood';
+  return PAGES[h] ? h : 'mood';
+}
+
+function renderNav(){
+  const route = currentRoute();
+  const linkHtml = (mobile) => NAV_ITEMS.map(item => {
+    const key = item.href.replace('#/','');
+    const active = key === route;
+    if (mobile){
+      return `<a class="mobile-link ${active?'active':''}" href="${item.href}"><span class="nav-icon">${item.icon}</span><span>${item.name}</span></a>`;
+    }
+    return `<a class="nav-link ${active?'active':''}" href="${item.href}"><span class="nav-icon">${item.icon}</span>${item.name}</a>`;
+  }).join('');
+  document.getElementById('nav-desktop').innerHTML = linkHtml(false);
+  document.getElementById('nav-mobile').innerHTML = linkHtml(true);
+}
+
+function renderApp(){
+  renderNav();
+  clearGymTimer();
+  const page = currentRoute();
+  PAGES[page]();
+}
+window.addEventListener('hashchange', renderApp);
+
+/* ============================== [MODAL / SHEET HELPERS] ============================== */
+function escKeyClose(e){ if (e.key === 'Escape'){ closeModal(); closeSheet(); } }
+function openModal(titleText, bodyHtml){
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `<div class="overlay" id="modal-overlay"><div class="dialog" role="dialog" aria-modal="true">
+    <h3 class="dialog-title">${esc(titleText)}</h3>
+    <div class="dialog-content stack-4 pt-4">${bodyHtml}</div>
+  </div></div>`;
+  document.getElementById('modal-overlay').addEventListener('click', e=>{ if (e.target.id==='modal-overlay') closeModal(); });
+  document.addEventListener('keydown', escKeyClose);
+}
+function closeModal(){ document.getElementById('modal-root').innerHTML=''; document.removeEventListener('keydown', escKeyClose); }
+
+function openSheet(bodyHtml){
+  const root = document.getElementById('sheet-root');
+  root.innerHTML = `<div class="sheet-overlay" id="sheet-overlay"><div class="sheet">${bodyHtml}</div></div>`;
+  document.getElementById('sheet-overlay').addEventListener('click', e=>{ if (e.target.id==='sheet-overlay') closeSheet(); });
+  document.addEventListener('keydown', escKeyClose);
+}
+function closeSheet(){ document.getElementById('sheet-root').innerHTML=''; document.removeEventListener('keydown', escKeyClose); }
+
+/* ============================== [UI-MOOD] ============================== */
+const EMOTIONS = [
+  { id:'Overwhelmed', emoji:'🌊' }, { id:'Angry', emoji:'🔥' }, { id:'Anxious', emoji:'⚡' }, { id:'Stressed', emoji:'💥' },
+  { id:'Guilty', emoji:'🥀' }, { id:'Lonely', emoji:'🌫️' }, { id:'Empty', emoji:'🕳️' }, { id:'Tired', emoji:'🔋' },
+  { id:'Motivated', emoji:'🚀' }, { id:'Content', emoji:'🍵' }, { id:'Grateful', emoji:'✨' }, { id:'Fulfilled', emoji:'🏔️' },
+  { id:'Happy', emoji:'☀️' }, { id:'Calm', emoji:'🌿' },
+];
+const PARTS = ['Jason','Timmy','James','Empty'];
+const ZONE_LABELS = { blue:{label:'Blue — Calm / Shutdown',color:'#60a5fa'}, green:{label:'Green — Regulated',color:'#4ade80'}, orange:{label:'Orange — Activated',color:'#fb923c'}, red:{label:'Red — Overwhelmed',color:'#ef4444'} };
+const ZONE_DOT = { blue:'#60a5fa', green:'#4ade80', orange:'#fb923c', red:'#ef4444' };
+const ZONE_DESC = { blue:'Calm / Shutdown', green:'Regulated', orange:'Activated', red:'Overwhelmed' };
+function zoneFromPosition(v){ if (v<28) return 'blue'; if (v<52) return 'green'; if (v<76) return 'orange'; return 'red'; }
+
+let moodForm = null;
+function freshMoodForm(){ return { level:1, zone:null, zonePosition:50, emotions:[], part:null, isFinished:false, needsSomething:null }; }
+
+function renderMood(){
+  if (!moodForm) moodForm = freshMoodForm();
+  const f = moodForm;
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="stack-8 fade-in">
+      <header><h1 class="h1">Check In</h1><p class="muted mt-1">Take a breath. Where are you right now?</p></header>
+      <div id="mood-form-area"></div>
+      <div class="pt-8 border-t" style="margin-top:2rem;">
+        <h2 style="font-size:1.25rem;margin-bottom:1.5rem;">Recent Check-Ins</h2>
+        <div id="mood-history" class="stack-4"></div>
+      </div>
+    </div>`;
+  renderMoodFormArea();
+  refreshMoodHistory();
+}
+
+function renderMoodFormArea(){
+  const f = moodForm;
+  const area = document.getElementById('mood-form-area');
+  if (!f.isFinished){
+    area.innerHTML = `
+      <div class="stack-6">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title">1. What Zone Am I In?</h3></div>
+          <div class="card-content stack-4">
+            <div class="zone-labels"><span style="color:#60a5fa">Blue</span><span style="color:#4ade80">Green</span><span style="color:#fb923c">Orange</span><span style="color:#ef4444">Red</span></div>
+            <div class="zone-track">
+              <div class="zone-gradient"></div>
+              <div class="zone-thumb" id="zone-thumb" style="left:${f.zonePosition}%"></div>
+              <input type="range" min="0" max="100" value="${f.zonePosition}" id="zone-slider" class="zone-input"/>
+            </div>
+            <p id="zone-label" class="zone-label-text ${f.zone?'':'hidden'}" style="color:${f.zone?ZONE_LABELS[f.zone].color:''}">${f.zone?ZONE_LABELS[f.zone].label:''}</p>
+            <div id="quick-save-row" class="row between pt-4 border-t ${f.zone?'':'hidden'}" style="justify-content:flex-end;">
+              <button class="btn btn-outline btn-sm" id="btn-quick-save">Quick save &amp; finish</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card fade-in ${f.level<2?'hidden':''}" id="level2-card">
+          <div class="card-header"><h3 class="card-title">2. What Emotions Am I Feeling?</h3></div>
+          <div class="card-content"><div class="chip-row" id="emotion-chips">
+            ${EMOTIONS.map(e=>`<button type="button" class="chip ${f.emotions.includes(e.id)?'chip-active':''}" data-emotion="${e.id}">${e.emoji} ${e.id}</button>`).join('')}
+          </div></div>
+        </div>
+
+        <div class="card fade-in ${f.level<3?'hidden':''}" id="level3-card">
+          <div class="card-header"><h3 class="card-title">3. Who Is In Control Right Now?</h3></div>
+          <div class="card-content stack-6">
+            <div class="grid-parts" id="part-buttons">
+              ${PARTS.map(p=>`<button type="button" class="btn ${f.part===p?'btn-default':'btn-outline'}" data-part="${p}">${p}</button>`).join('')}
+            </div>
+            <div id="part-fields" class="stack-4 pt-4 border-t ${f.part?'':'hidden'}">
+              <div class="field"><label class="label">Where am I?</label><input type="text" class="input" id="input-where" placeholder="e.g. Living room, coffee shop..."/></div>
+              <div class="field"><label class="label">What am I feeling &amp; why?</label><textarea class="textarea" id="input-feelings" placeholder="Write freely..."></textarea></div>
+              <div class="field"><label class="label">What am I doing for myself in this moment?</label><textarea class="textarea" id="input-investing" placeholder="How can you invest in your future self right now?"></textarea></div>
+            </div>
+            <button type="button" class="btn btn-default btn-w-full" id="btn-save-checkin">Save Check-In</button>
+          </div>
+        </div>
+      </div>`;
+    attachMoodFormListeners();
+  } else {
+    area.innerHTML = renderMoodFinished();
+    attachMoodFinishedListeners();
+  }
+}
+
+function attachMoodFormListeners(){
+  const f = moodForm;
+  const slider = document.getElementById('zone-slider');
+  slider.addEventListener('input', e=>{
+    f.zonePosition = parseInt(e.target.value,10);
+    f.zone = zoneFromPosition(f.zonePosition);
+    document.getElementById('zone-thumb').style.left = f.zonePosition+'%';
+    const lbl = document.getElementById('zone-label');
+    lbl.textContent = ZONE_LABELS[f.zone].label; lbl.style.color = ZONE_LABELS[f.zone].color; lbl.classList.remove('hidden');
+    document.getElementById('quick-save-row').classList.remove('hidden');
+    if (f.level===1){ f.level=2; document.getElementById('level2-card').classList.remove('hidden'); }
+  });
+
+  document.getElementById('emotion-chips').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-emotion]'); if (!btn) return;
+    const id = btn.dataset.emotion;
+    if (f.emotions.includes(id)) f.emotions = f.emotions.filter(x=>x!==id); else f.emotions.push(id);
+    btn.classList.toggle('chip-active');
+    if (f.level===2){ f.level=3; document.getElementById('level3-card').classList.remove('hidden'); }
+  });
+
+  document.getElementById('part-buttons').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-part]'); if (!btn) return;
+    const p = btn.dataset.part;
+    f.part = (f.part===p) ? null : p;
+    document.querySelectorAll('#part-buttons [data-part]').forEach(b=>{
+      b.classList.toggle('btn-default', b.dataset.part===f.part);
+      b.classList.toggle('btn-outline', b.dataset.part!==f.part);
+    });
+    document.getElementById('part-fields').classList.toggle('hidden', !f.part);
+  });
+
+  document.getElementById('btn-quick-save').addEventListener('click', ()=>saveMoodEntry());
+  document.getElementById('btn-save-checkin').addEventListener('click', ()=>saveMoodEntry());
+}
+
+function saveMoodEntry(){
+  const f = moodForm;
+  if (!f.zone) return;
+  const whereEl = document.getElementById('input-where');
+  const feelingsEl = document.getElementById('input-feelings');
+  const investingEl = document.getElementById('input-investing');
+  const entry = {
+    id: nextId(),
+    zone: f.zone,
+    zonePosition: f.zonePosition,
+    emotions: f.emotions.slice(),
+    part: f.part || null,
+    whereAmI: (whereEl && whereEl.value.trim()) || null,
+    feelingsAndWhy: (feelingsEl && feelingsEl.value.trim()) || null,
+    investingInSelf: (investingEl && investingEl.value.trim()) || null,
+    createdAt: new Date().toISOString(),
+  };
+  state.mood.unshift(entry);
+  save();
+  f.isFinished = true;
+  f.needsSomething = null;
+  renderMoodFormArea();
+  refreshMoodHistory();
+}
+
+function renderMoodFinished(){
+  return `
+    <div class="stack-6 fade-in">
+      <div class="row" style="justify-content:flex-end;">
+        <button class="btn btn-outline btn-sm" id="btn-new-checkin">↻ New Check-In</button>
+      </div>
+      <div class="card" style="background:hsl(var(--primary) / 0.06); border-color:hsl(var(--primary) / 0.25);">
+        <div class="card-header"><h3 class="card-title" style="font-family:var(--font-serif);font-size:1.25rem;">A reminder from your Book of Life</h3></div>
+        <div class="card-content">
+          <p class="muted text-sm">No reminders saved yet — add some in the Book of Life section.</p>
+        </div>
+      </div>
+      <div id="needs-something-block"></div>
+    </div>`;
+}
+
+function attachMoodFinishedListeners(){
+  document.getElementById('btn-new-checkin').addEventListener('click', ()=>{ moodForm = freshMoodForm(); renderMoodFormArea(); });
+  renderNeedsSomethingBlock();
+}
+
+function renderNeedsSomethingBlock(){
+  const f = moodForm;
+  const el = document.getElementById('needs-something-block');
+  if (f.needsSomething === null){
+    el.innerHTML = `<div class="card">
+      <div class="card-header"><h3 class="card-title">Do you still need something?</h3></div>
+      <div class="card-content row row-gap-3">
+        <button class="btn btn-outline flex-1" id="btn-needs-yes">Yes, I need more</button>
+        <button class="btn btn-default flex-1" id="btn-needs-no">I'm okay for now</button>
+      </div>
+    </div>`;
+    document.getElementById('btn-needs-yes').addEventListener('click', ()=>{ f.needsSomething=true; renderNeedsSomethingBlock(); });
+    document.getElementById('btn-needs-no').addEventListener('click', ()=>{ f.needsSomething=false; renderNeedsSomethingBlock(); });
+  } else if (f.needsSomething){
+    el.innerHTML = `<div class="grid-4 fade-in">
+      <div class="card"><div class="card-content" style="padding:1.5rem;display:flex;align-items:center;justify-content:center;min-height:120px;text-align:center;"><h3 style="font-weight:600;font-size:1.1rem;">Go for a walk</h3></div></div>
+      <div class="card"><div class="card-content" style="padding:1.5rem;display:flex;align-items:center;justify-content:center;min-height:120px;text-align:center;"><h3 style="font-weight:600;font-size:1.1rem;">Talk to someone</h3></div></div>
+      <a href="#/triggers" class="card" style="display:block;"><div class="card-content" style="padding:1.5rem;display:flex;align-items:center;justify-content:center;min-height:120px;text-align:center;"><h3 style="font-weight:600;font-size:1.1rem;color:hsl(var(--primary));">Use Trigger Tracker</h3></div></a>
+    </div>`;
+  } else {
+    el.innerHTML = `<p class="muted" style="text-align:center;">Take care. You've got this.</p>`;
+  }
+}
+
+function refreshMoodHistory(){
+  const el = document.getElementById('mood-history');
+  const entries = state.mood.slice().sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+  if (entries.length===0){
+    el.innerHTML = `<p class="muted italic">No past check-ins yet. Move the slider above to get started.</p>`;
+    return;
+  }
+  el.innerHTML = entries.map(entry => `
+    <div class="card-faint" style="border-radius:var(--radius);cursor:pointer;padding:1rem;" data-mood-id="${entry.id}">
+      <div class="row between" style="align-items:flex-start;margin-bottom:0.5rem;">
+        <div class="row row-gap-2">
+          <span class="dot" style="background:${ZONE_DOT[entry.zone]||'#888'}"></span>
+          <span class="text-sm" style="font-weight:500;text-transform:capitalize;">${esc(entry.zone)} zone</span>
+          <span class="muted text-xs">· ${fmtShort(new Date(entry.createdAt))}</span>
+        </div>
+        <div class="row row-gap-2">
+          ${entry.part ? `<span class="badge-outline">${esc(entry.part)}</span>` : ''}
+          <button class="btn btn-icon btn-ghost" data-delete-mood="${entry.id}" title="Delete" style="color:hsl(var(--muted-foreground));">🗑</button>
+        </div>
+      </div>
+      ${entry.emotions && entry.emotions.length ? `<div class="chip-row" style="margin-top:0.5rem;">${entry.emotions.map(em=>`<span class="badge">${esc(em)}</span>`).join('')}</div>` : ''}
+      ${entry.feelingsAndWhy ? `<p class="text-sm muted line-clamp-2" style="margin-top:0.75rem;">${esc(entry.feelingsAndWhy)}</p>` : ''}
+    </div>
+  `).join('');
+
+  el.querySelectorAll('[data-mood-id]').forEach(card=>{
+    card.addEventListener('click', e=>{
+      if (e.target.closest('[data-delete-mood]')) return;
+      const entry = entries.find(x=>x.id===parseInt(card.dataset.moodId,10));
+      openMoodDetail(entry);
+    });
+  });
+  el.querySelectorAll('[data-delete-mood]').forEach(btn=>{
+    btn.addEventListener('click', e=>{
+      e.stopPropagation();
+      const id = parseInt(btn.dataset.deleteMood,10);
+      state.mood = state.mood.filter(x=>x.id!==id);
+      save();
+      refreshMoodHistory();
+    });
+  });
+}
+
+function openMoodDetail(entry){
+  const d = new Date(entry.createdAt);
+  let body = `
+    <div class="row row-gap-3" style="margin-bottom:1rem;">
+      <span class="dot" style="width:1rem;height:1rem;background:${ZONE_DOT[entry.zone]||'#888'}"></span>
+      <div>
+        <h3 style="font-size:1.1rem;font-weight:600;text-transform:capitalize;">${esc(entry.zone)} zone — ${ZONE_DESC[entry.zone]||''}</h3>
+        <p class="muted text-xs mt-1">${fmtFull(d)}</p>
+      </div>
+    </div>
+    <div class="stack-5">`;
+  if (entry.emotions && entry.emotions.length){
+    body += `<div><p class="uppercase-label" style="margin-bottom:0.5rem;">Emotions</p><div class="chip-row">${entry.emotions.map(em=>`<span class="badge">${esc(em)}</span>`).join('')}</div></div>`;
+  }
+  if (entry.part){
+    body += `<div><p class="uppercase-label" style="margin-bottom:0.25rem;">Who was in control</p><span class="badge-outline">${esc(entry.part)}</span></div>`;
+  }
+  if (entry.whereAmI){
+    body += `<div><p class="uppercase-label" style="margin-bottom:0.25rem;">Where I was</p><p class="text-sm">${esc(entry.whereAmI)}</p></div>`;
+  }
+  if (entry.feelingsAndWhy){
+    body += `<div><p class="uppercase-label" style="margin-bottom:0.25rem;">What I was feeling &amp; why</p><p class="text-sm" style="white-space:pre-wrap;line-height:1.5;">${esc(entry.feelingsAndWhy)}</p></div>`;
+  }
+  if (entry.investingInSelf){
+    body += `<div><p class="uppercase-label" style="margin-bottom:0.25rem;">What I did for myself</p><p class="text-sm" style="white-space:pre-wrap;line-height:1.5;">${esc(entry.investingInSelf)}</p></div>`;
+  }
+  if (!entry.feelingsAndWhy && !entry.investingInSelf && !entry.whereAmI && !entry.part){
+    body += `<p class="text-sm muted italic">Quick check-in — no journal written.</p>`;
+  }
+  body += `</div>`;
+  openSheet(body);
+}
+
+/* ============================== [UI-TRIGGERS] ============================== */
+let triggerForm = { step:1 };
+function renderTriggers(){
+  triggerForm = { step:1 };
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="stack-8 fade-in">
+      <header><h1 class="h1">Trigger Tracker</h1><p class="muted mt-1">Deconstruct what just happened. Be honest.</p></header>
+      <div class="stack-6">
+        <div class="card">
+          <div class="card-header"><h3 class="card-title" style="color:hsl(var(--primary));">1. Where am I? What has triggered me?</h3></div>
+          <div class="card-content"><textarea class="textarea" id="trig-where" placeholder="Describe the situation..."></textarea></div>
+        </div>
+        <div class="card fade-in hidden" id="trig-step2">
+          <div class="card-header"><h3 class="card-title" style="color:hsl(var(--primary));">2. What is my distraction?</h3></div>
+          <div class="card-content"><textarea class="textarea" id="trig-distraction" placeholder="What are you doing or thinking to avoid the feeling?"></textarea></div>
+        </div>
+        <div class="card fade-in hidden" id="trig-step3">
+          <div class="card-header"><h3 class="card-title" style="color:hsl(var(--primary));">3. What is filling in the hole?</h3></div>
+          <div class="card-content stack-4">
+            <textarea class="textarea" id="trig-hole" placeholder="What need is this pointing to? What is missing?"></textarea>
+            <button class="btn btn-default btn-w-full" id="btn-save-trigger" disabled>Save Entry</button>
+          </div>
+        </div>
+      </div>
+      <div class="pt-8 border-t" style="margin-top:3rem;">
+        <h2 style="font-size:1.25rem;margin-bottom:1.5rem;">Past Triggers</h2>
+        <div id="trigger-history" class="stack-4"></div>
+      </div>
+    </div>`;
+
+  document.getElementById('trig-where').addEventListener('input', e=>{
+    if (triggerForm.step===1 && e.target.value.length>5){ triggerForm.step=2; document.getElementById('trig-step2').classList.remove('hidden'); }
+  });
+  document.getElementById('trig-distraction').addEventListener('input', e=>{
+    if (triggerForm.step===2 && e.target.value.length>5){ triggerForm.step=3; document.getElementById('trig-step3').classList.remove('hidden'); }
+  });
+  document.getElementById('trig-hole').addEventListener('input', e=>{
+    document.getElementById('btn-save-trigger').disabled = !e.target.value.trim();
+  });
+  document.getElementById('btn-save-trigger').addEventListener('click', ()=>{
+    const hole = document.getElementById('trig-hole').value.trim();
+    if (!hole) return;
+    state.triggers.unshift({
+      id: nextId(),
+      whereAndTrigger: document.getElementById('trig-where').value.trim(),
+      distraction: document.getElementById('trig-distraction').value.trim() || null,
+      fillingHole: hole,
+      createdAt: new Date().toISOString(),
+    });
+    save();
+    renderTriggers();
+  });
+  refreshTriggerHistory();
+}
+function refreshTriggerHistory(){
+  const el = document.getElementById('trigger-history');
+  const entries = state.triggers.slice().sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+  if (!entries.length){ el.innerHTML = `<p class="muted italic">No trigger entries yet.</p>`; return; }
+  el.innerHTML = entries.map(e=>`
+    <div class="card-faint" style="padding:1.1rem;">
+      <div class="muted text-xs" style="margin-bottom:0.6rem;">${fmtDateOnly(new Date(e.createdAt))} at ${timeStr(new Date(e.createdAt))}</div>
+      <div style="margin-bottom:0.6rem;"><strong class="text-sm muted" style="display:block;margin-bottom:0.25rem;">Trigger:</strong><p class="text-sm">${esc(e.whereAndTrigger)}</p></div>
+      ${e.distraction ? `<div style="margin-bottom:0.6rem;"><strong class="text-sm muted" style="display:block;margin-bottom:0.25rem;">Distraction:</strong><p class="text-sm">${esc(e.distraction)}</p></div>` : ''}
+      ${e.fillingHole ? `<div class="pt-3 border-t"><strong class="text-sm" style="display:block;margin-bottom:0.25rem;color:hsl(var(--primary));">The Hole:</strong><p class="text-sm">${esc(e.fillingHole)}</p></div>` : ''}
+    </div>
+  `).join('');
+}
+
+/* ============================== [UI-HOBBIES] ============================== */
+const HOBBIES = [
+  { id:'NASCAR blog', label:'NASCAR Blog' }, { id:'mental health reel', label:'Mental Health Reel' },
+  { id:'photography', label:'Photography' }, { id:'writing', label:'Writing' },
+  { id:'movie night', label:'Movie Night' }, { id:'scores', label:'Scores' }, { id:'gaming', label:'Gaming' },
+];
+let hobbiesUi = { selected:null, filter:null };
+function renderHobbies(){
+  hobbiesUi.selected = null;
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="stack-8 fade-in">
+      <header><h1 class="h1">Hobbies</h1><p class="muted mt-1">Pick a hobby and write about your session.</p></header>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title" style="font-size:1rem;">New Entry</h3></div>
+        <div class="card-content stack-4">
+          <div>
+            <p class="text-sm muted" style="margin-bottom:0.75rem;">Which hobby?</p>
+            <div class="chip-row" id="hobby-select">
+              ${HOBBIES.map(h=>`<button type="button" class="chip" data-hobby="${esc(h.id)}">${esc(h.label)}</button>`).join('')}
+            </div>
+          </div>
+          <div id="hobby-journal-area" class="hidden fade-in stack-3">
+            <p class="text-sm" style="font-weight:500;" id="hobby-journal-label"></p>
+            <textarea class="textarea" id="hobby-journal" placeholder="What happened? How did it feel? Anything memorable..."></textarea>
+            <div class="row between">
+              <p class="text-xs muted">${fmtDay(new Date())}</p>
+              <button class="btn btn-default" id="btn-save-hobby" disabled>Save Entry</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="stack-4">
+        <div class="row between wrap" style="gap:0.75rem;">
+          <h2 style="font-size:1.25rem;">Past Entries</h2>
+          <div class="chip-row" id="hobby-filters">
+            <button type="button" class="chip chip-sm chip-active" data-filter="">All</button>
+            ${HOBBIES.map(h=>`<button type="button" class="chip chip-sm" data-filter="${esc(h.id)}">${esc(h.label)}</button>`).join('')}
+          </div>
+        </div>
+        <div id="hobby-history" class="stack-3"></div>
+      </div>
+    </div>`;
+
+  document.getElementById('hobby-select').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-hobby]'); if (!btn) return;
+    const id = btn.dataset.hobby;
+    hobbiesUi.selected = (hobbiesUi.selected===id) ? null : id;
+    document.querySelectorAll('#hobby-select [data-hobby]').forEach(b=>b.classList.toggle('chip-active', b.dataset.hobby===hobbiesUi.selected));
+    const area = document.getElementById('hobby-journal-area');
+    area.classList.toggle('hidden', !hobbiesUi.selected);
+    if (hobbiesUi.selected){
+      document.getElementById('hobby-journal-label').textContent = (HOBBIES.find(h=>h.id===hobbiesUi.selected)||{}).label + ' — write about it';
+      document.getElementById('hobby-journal').value='';
+      document.getElementById('btn-save-hobby').disabled = true;
+    }
+  });
+  document.getElementById('hobby-journal').addEventListener('input', e=>{
+    document.getElementById('btn-save-hobby').disabled = !e.target.value.trim();
+  });
+  document.getElementById('btn-save-hobby').addEventListener('click', ()=>{
+    const journal = document.getElementById('hobby-journal').value.trim();
+    if (!journal || !hobbiesUi.selected) return;
+    state.hobbies.unshift({ id: nextId(), hobby: hobbiesUi.selected, journal, createdAt: new Date().toISOString() });
+    save();
+    renderHobbies();
+  });
+  document.getElementById('hobby-filters').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-filter]'); if (!btn) return;
+    hobbiesUi.filter = btn.dataset.filter || null;
+    document.querySelectorAll('#hobby-filters [data-filter]').forEach(b=>b.classList.toggle('chip-active', (b.dataset.filter||null)===hobbiesUi.filter));
+    refreshHobbyHistory();
+  });
+  refreshHobbyHistory();
+}
+function refreshHobbyHistory(){
+  const el = document.getElementById('hobby-history');
+  let entries = state.hobbies.slice().sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+  if (hobbiesUi.filter) entries = entries.filter(e=>e.hobby===hobbiesUi.filter);
+  if (!entries.length){ el.innerHTML = `<p class="muted italic">No entries yet.</p>`; return; }
+  el.innerHTML = entries.map(e=>{
+    const label = (HOBBIES.find(h=>h.id===e.hobby)||{}).label || e.hobby;
+    return `<div class="card-faint" style="padding:1rem;">
+      <div class="row between" style="align-items:flex-start;gap:0.75rem;">
+        <div class="flex-1">
+          <div class="row row-gap-3" style="margin-bottom:0.5rem;">
+            <span class="text-xs" style="font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:hsl(var(--primary));">${esc(label)}</span>
+            <span class="text-xs muted">${fmtShort(new Date(e.createdAt))}</span>
+          </div>
+          <p class="text-sm" style="white-space:pre-wrap;line-height:1.5;">${esc(e.journal)}</p>
+        </div>
+        <button class="btn btn-icon btn-ghost" data-delete-hobby="${e.id}" style="color:hsl(var(--muted-foreground));flex-shrink:0;">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-delete-hobby]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.hobbies = state.hobbies.filter(x=>x.id!==parseInt(btn.dataset.deleteHobby,10));
+      save();
+      refreshHobbyHistory();
+    });
+  });
+}
+
+/* ============================== [UI-GYM] ============================== */
+const MOTIVATION = [ {v:5,emoji:'🔥',label:'Fired Up'}, {v:4,emoji:'💪',label:'Ready'}, {v:3,emoji:'😐',label:'Neutral'}, {v:2,emoji:'😴',label:'Low Energy'}, {v:1,emoji:'😩',label:'Forcing It'} ];
+const EXERCISE_MOOD = [ {v:1,emoji:'💪',label:'Strong',color:'#4ade80'}, {v:2,emoji:'😊',label:'Good',color:'#34d399'}, {v:3,emoji:'😐',label:'Okay',color:'#facc15'}, {v:4,emoji:'😤',label:'Struggling',color:'#fb923c'}, {v:5,emoji:'🚪',label:'Wanted Out',color:'#f87171'} ];
+const RATING_CONFIG = {
+  great:{label:'Great', bg:'rgba(34,197,94,.15)', fg:'#4ade80', border:'rgba(34,197,94,.3)'},
+  good:{label:'Good', bg:'rgba(16,185,129,.15)', fg:'#34d399', border:'rgba(16,185,129,.3)'},
+  okay:{label:'Okay', bg:'rgba(234,179,8,.15)', fg:'#facc15', border:'rgba(234,179,8,.3)'},
+  bad:{label:'Bad', bg:'rgba(251,146,60,.15)', fg:'#fb923c', border:'rgba(251,146,60,.3)'},
+  cheat:{label:'Cheat', bg:'rgba(239,68,68,.15)', fg:'#f87171', border:'rgba(239,68,68,.3)'},
+};
+function motivationFor(v){ return MOTIVATION.find(m=>m.v===v) || MOTIVATION[2]; }
+function exMoodFor(v){ return EXERCISE_MOOD.find(m=>m.v===v) || EXERCISE_MOOD[2]; }
+
+const PLAN_DAYS = [
+  { key:'monday', label:'Monday' }, { key:'tuesday', label:'Tuesday' }, { key:'wednesday', label:'Wednesday' },
+  { key:'thursday', label:'Thursday' }, { key:'friday', label:'Friday' }, { key:'saturday', label:'Saturday' },
+  { key:'sunday', label:'Sunday' },
+];
+
+let gymView = { type:'hub' };
+let gymTimerHandle = null;
+function clearGymTimer(){ if (gymTimerHandle){ clearInterval(gymTimerHandle); gymTimerHandle=null; } }
+
+function renderGym(){
+  if (currentRoute() !== 'gym') return;
+  const content = document.getElementById('page-content');
+  if (gymView.type==='exercise-detail') return renderExerciseDetail(content);
+  if (gymView.type==='pre-checkin') return renderPreCheckin(content);
+  if (gymView.type==='active-session') return renderActiveSession(content);
+  if (gymView.type==='session-detail') return renderSessionDetail(content);
+  return renderGymHub(content);
+}
+
+function renderGymHub(content){
+  const sessions = state.gymSessions.slice().sort((a,b)=> new Date(b.startedAt)-new Date(a.startedAt));
+  const activeSessions = sessions.filter(s=>!s.endedAt);
+  const pastSessions = sessions.filter(s=>!!s.endedAt);
+  const exercises = state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const diet = state.diet.slice().sort((a,b)=> new Date(b.loggedAt)-new Date(a.loggedAt));
+
+  const dietGrouped = {};
+  diet.forEach(e=>{
+    const day = new Date(e.loggedAt).toISOString().slice(0,10);
+    (dietGrouped[day] = dietGrouped[day] || []).push(e);
+  });
+  const dietDays = Object.keys(dietGrouped).sort((a,b)=>b.localeCompare(a));
+  const mealLibrary = state.mealLibrary.slice().sort((a,b)=>a.name.localeCompare(b.name));
+
+  content.innerHTML = `
+    <div class="stack-8 fade-in gym-page" style="margin-bottom:3rem;">
+      <header><h1 class="h1">Health</h1><p class="muted mt-1">Track sessions, progress, diet, and plans.</p></header>
+
+      <section>
+        <div class="row between" style="margin-bottom:1rem;">
+          <h2 style="font-size:1.25rem;">Sessions</h2>
+          <button class="btn btn-default btn-sm" id="btn-start-session">▶ Start Session</button>
+        </div>
+        ${activeSessions.length ? `<div class="stack-2" style="margin-bottom:0.75rem;">${activeSessions.map(s=>{
+          const m = motivationFor(s.preMotivation);
+          return `<button class="list-card" style="background:hsl(var(--primary)/0.1);border-color:hsl(var(--primary)/0.4);" data-resume="${s.id}">
+            <span style="font-size:1.3rem;">${m.emoji}</span>
+            <div class="flex-1 min-w-0"><p class="text-sm" style="font-weight:600;color:hsl(var(--primary));">Session in progress</p>
+            <p class="text-xs muted">Started ${timeStr(new Date(s.startedAt))} · tap to resume</p></div>
+            <span style="color:hsl(var(--primary));">⚡</span>
+          </button>`;
+        }).join('')}</div>` : ''}
+        ${pastSessions.length===0 ? `<p class="muted italic text-sm">No sessions yet — start your first one.</p>` :
+          `<div class="stack-2">${pastSessions.slice(0,8).map(s=>{
+            const m = motivationFor(s.preMotivation);
+            const dur = s.endedAt ? durationStrict(new Date(s.endedAt)-new Date(s.startedAt)) : 'in progress';
+            return `<button class="list-card" data-session="${s.id}">
+              <span style="font-size:1.3rem;flex-shrink:0;">${m.emoji}</span>
+              <div class="flex-1 min-w-0"><p class="text-sm" style="font-weight:500;">${fmtDay(new Date(s.startedAt))}</p><p class="text-xs muted">${m.label} · ${dur}</p></div>
+              <span class="muted">›</span>
+            </button>`;
+          }).join('')}</div>`}
+      </section>
+
+      <section class="pt-8 border-t">
+        <div class="row between" style="margin-bottom:1rem;">
+          <h2 style="font-size:1.25rem;">Exercises &amp; PBs</h2>
+          <button class="btn btn-outline btn-sm" id="btn-add-exercise">+ Add</button>
+        </div>
+        ${exercises.length===0 ? `<p class="muted italic text-sm">No exercises yet — add your first one.</p>` :
+          `<div class="stack-2">${exercises.map(ex=>`
+            <button class="list-card" data-exercise="${ex.id}">
+              <span style="flex-shrink:0;">🏋️</span>
+              <div class="flex-1 min-w-0"><p class="text-sm trunc" style="font-weight:500;">${esc(ex.name)}</p>
+              <p class="text-xs muted">${ex.pbWeight||ex.pbReps ? `PB: ${ex.pbWeight?ex.pbWeight+' kg':'—'}${ex.pbReps?' × '+ex.pbReps+' reps':''}` : 'No PB logged'}</p></div>
+              <span class="muted">›</span>
+            </button>`).join('')}</div>`}
+      </section>
+
+      <section class="pt-8 border-t">
+        <div class="row between" style="margin-bottom:1rem;">
+          <h2 style="font-size:1.25rem;">Gym Plan</h2>
+        </div>
+        <div class="stack-2">${PLAN_DAYS.map(d=>{
+          const day = state.gymPlan[d.key] || { split:null, exercises:[] };
+          return `<button class="list-card" data-gymplan-day="${d.key}">
+            <div class="flex-1 min-w-0">
+              <p class="text-sm" style="font-weight:500;">${d.label}${day.split?` — <span style="color:hsl(var(--primary));">${esc(day.split)}</span>`:''}</p>
+              <p class="text-xs muted trunc">${day.exercises.length ? esc(day.exercises.join(', ')) : (day.split ? 'No exercises planned' : 'Rest / not set')}</p>
+            </div>
+            <span class="muted">›</span>
+          </button>`;
+        }).join('')}</div>
+      </section>
+
+      <section class="pt-8 border-t">
+        <div class="row between" style="margin-bottom:1.5rem;">
+          <h2 style="font-size:1.25rem;">Diet Tracker</h2>
+          <button class="btn btn-outline btn-sm" id="btn-log-food">+ Log Food</button>
+        </div>
+        ${dietDays.length===0 ? `<p class="muted italic">No food logged yet.</p>` :
+          `<div class="stack-8">${dietDays.map(day=>{
+            const dayEntries = dietGrouped[day];
+            const counts = {};
+            Object.keys(RATING_CONFIG).forEach(r=>counts[r]=dayEntries.filter(e=>e.rating===r).length);
+            const total = dayEntries.length;
+            const bar = Object.keys(RATING_CONFIG).map(r=>{
+              const pct = total>0 ? (counts[r]/total*100) : 0;
+              if (!pct) return '';
+              return `<div style="width:${pct}%;background:${RATING_CONFIG[r].fg};height:100%;"></div>`;
+            }).join('');
+            const badges = Object.keys(RATING_CONFIG).map(r=> counts[r]>0 ? `<span class="text-xs" style="font-weight:600;padding:0.1rem 0.5rem;border-radius:999px;border:1px solid ${RATING_CONFIG[r].border};background:${RATING_CONFIG[r].bg};color:${RATING_CONFIG[r].fg};">${counts[r]} ${RATING_CONFIG[r].label}</span>` : '').join('');
+            return `<div>
+              <div style="margin-bottom:0.75rem;">
+                <p class="text-sm" style="font-weight:600;">${fmtDay(new Date(day+'T12:00:00'))}</p>
+                <div class="row row-gap-3" style="margin-top:0.4rem;">
+                  <div style="display:flex;height:8px;flex:1;border-radius:999px;overflow:hidden;gap:1px;background:hsl(var(--border));">${bar}</div>
+                  <div class="row row-gap-2" style="flex-shrink:0;">${badges}</div>
+                </div>
+              </div>
+              <div class="stack-2">${dayEntries.map(e=>{
+                const cfg = RATING_CONFIG[e.rating] || RATING_CONFIG.okay;
+                return `<div class="row between" style="padding:0.5rem 0.75rem;border-radius:0.6rem;background:hsl(var(--card)/0.3);border:1px solid hsl(var(--border));">
+                  <div class="row row-gap-3"><span>🍎</span><p class="text-sm" style="font-weight:500;">${esc(e.food)}</p></div>
+                  <div class="row row-gap-2">
+                    <span class="text-xs" style="font-weight:600;padding:0.1rem 0.5rem;border-radius:999px;border:1px solid ${cfg.border};background:${cfg.bg};color:${cfg.fg};">${cfg.label}</span>
+                    <button class="btn btn-icon btn-ghost" data-delete-diet="${e.id}" style="color:hsl(var(--muted-foreground));">🗑</button>
+                  </div>
+                </div>`;
+              }).join('')}</div>
+            </div>`;
+          }).join('')}</div>`}
+      </section>
+
+      <section class="pt-8 border-t">
+        <div class="row between" style="margin-bottom:1rem;">
+          <h2 style="font-size:1.25rem;">Meal Plan</h2>
+          <button class="btn btn-outline btn-sm" id="btn-add-meal">+ Add Meal</button>
+        </div>
+        ${mealLibrary.length===0 ? `<p class="muted italic text-sm">No go-to meals yet — add your first one.</p>` :
+          `<div class="stack-2">${mealLibrary.map(m=>`
+            <div class="row between" style="padding:0.75rem 1rem;border-radius:0.75rem;border:1px solid hsl(var(--border));background:hsl(var(--card)/0.3);">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm trunc" style="font-weight:500;">${esc(m.name)}</p>
+                ${m.notes ? `<p class="text-xs muted trunc">${esc(m.notes)}</p>` : ''}
+              </div>
+              <div class="row row-gap-2" style="flex-shrink:0;">
+                <button class="btn btn-icon btn-ghost" data-edit-meal="${m.id}" style="color:hsl(var(--muted-foreground));">✎</button>
+                <button class="btn btn-icon btn-ghost" data-delete-meal="${m.id}" style="color:hsl(var(--muted-foreground));">🗑</button>
+              </div>
+            </div>`).join('')}</div>`}
+        <div class="pt-6">
+          <p class="uppercase-label" style="margin-bottom:0.75rem;">Weekly Assignments</p>
+          <div class="stack-2">${PLAN_DAYS.map(d=>{
+            const names = (state.mealPlan[d.key]||[]).map(id=>mealLibrary.find(m=>m.id===id)).filter(Boolean).map(m=>m.name);
+            return `<button class="list-card" data-mealplan-day="${d.key}">
+              <div class="flex-1 min-w-0">
+                <p class="text-sm" style="font-weight:500;">${d.label}</p>
+                <p class="text-xs muted trunc">${names.length ? esc(names.join(', ')) : 'No meals assigned'}</p>
+              </div>
+              <span class="muted">›</span>
+            </button>`;
+          }).join('')}</div>
+        </div>
+      </section>
+    </div>`;
+
+  document.getElementById('btn-start-session').addEventListener('click', ()=>{ gymView={type:'pre-checkin'}; renderGym(); });
+  document.getElementById('btn-add-exercise').addEventListener('click', openAddExerciseModal);
+  document.getElementById('btn-log-food').addEventListener('click', openLogFoodModal);
+  content.querySelectorAll('[data-resume]').forEach(b=>b.addEventListener('click', ()=>{ gymView={type:'active-session', sessionId:parseInt(b.dataset.resume,10)}; renderGym(); }));
+  content.querySelectorAll('[data-session]').forEach(b=>b.addEventListener('click', ()=>{ gymView={type:'session-detail', sessionId:parseInt(b.dataset.session,10)}; renderGym(); }));
+  content.querySelectorAll('[data-exercise]').forEach(b=>b.addEventListener('click', ()=>{ gymView={type:'exercise-detail', exerciseId:parseInt(b.dataset.exercise,10)}; renderGym(); }));
+  content.querySelectorAll('[data-delete-diet]').forEach(b=>b.addEventListener('click', ()=>{
+    state.diet = state.diet.filter(x=>x.id!==parseInt(b.dataset.deleteDiet,10));
+    save(); renderGymHub(content);
+  }));
+  document.getElementById('btn-add-meal').addEventListener('click', openAddMealModal);
+  content.querySelectorAll('[data-gymplan-day]').forEach(b=>b.addEventListener('click', ()=> openEditGymPlanDayModal(b.dataset.gymplanDay)));
+  content.querySelectorAll('[data-mealplan-day]').forEach(b=>b.addEventListener('click', ()=> openAssignMealDayModal(b.dataset.mealplanDay)));
+  content.querySelectorAll('[data-edit-meal]').forEach(b=>b.addEventListener('click', ()=> openEditMealModal(parseInt(b.dataset.editMeal,10))));
+  content.querySelectorAll('[data-delete-meal]').forEach(b=>b.addEventListener('click', ()=>{
+    state.mealLibrary = state.mealLibrary.filter(x=>x.id!==parseInt(b.dataset.deleteMeal,10));
+    save(); renderGymHub(content);
+  }));
+}
+
+function openAddExerciseModal(){
+  openModal('Add Exercise', `
+    <div class="field"><label class="label">Exercise Name</label><input class="input" id="m-ex-name" autofocus placeholder="e.g. Deadlift"/></div>
+    <div class="grid-2">
+      <div class="field"><label class="label">Starting PB Weight (kg)</label><input type="number" class="input" id="m-ex-weight" placeholder="0"/></div>
+      <div class="field"><label class="label">Starting PB Reps</label><input type="number" class="input" id="m-ex-reps" placeholder="0"/></div>
+    </div>
+    <div class="field"><label class="label">Notes</label><textarea class="textarea" id="m-ex-notes" placeholder="Form cues, goals…"></textarea></div>
+    <button class="btn btn-default btn-w-full" id="m-ex-save">Add Exercise</button>
+  `);
+  document.getElementById('m-ex-save').addEventListener('click', ()=>{
+    const name = document.getElementById('m-ex-name').value.trim();
+    if (!name) return;
+    state.exercises.push({
+      id: nextId(), name,
+      pbWeight: parseFloat(document.getElementById('m-ex-weight').value) || null,
+      pbReps: parseInt(document.getElementById('m-ex-reps').value,10) || null,
+      notes: document.getElementById('m-ex-notes').value.trim() || null,
+      pbHistory: [],
+    });
+    save(); closeModal(); renderGym();
+  });
+}
+
+function openAddMealModal(){
+  openModal('Add Meal', `
+    <div class="field"><label class="label">Meal Name</label><input class="input" id="m-meal-name" autofocus placeholder="e.g. Chicken and rice"/></div>
+    <div class="field"><label class="label">Notes</label><textarea class="textarea" id="m-meal-notes" placeholder="Ingredients, prep notes…"></textarea></div>
+    <button class="btn btn-default btn-w-full" id="m-meal-save">Add Meal</button>
+  `);
+  document.getElementById('m-meal-save').addEventListener('click', ()=>{
+    const name = document.getElementById('m-meal-name').value.trim();
+    if (!name) return;
+    state.mealLibrary.push({ id: nextId(), name, notes: document.getElementById('m-meal-notes').value.trim() || null });
+    save(); closeModal(); renderGym();
+  });
+}
+
+function openEditMealModal(mealId){
+  const meal = state.mealLibrary.find(m=>m.id===mealId);
+  if (!meal) return;
+  openModal('Edit Meal', `
+    <div class="field"><label class="label">Meal Name</label><input class="input" id="m-meal-name" autofocus value="${esc(meal.name)}"/></div>
+    <div class="field"><label class="label">Notes</label><textarea class="textarea" id="m-meal-notes">${esc(meal.notes||'')}</textarea></div>
+    <button class="btn btn-default btn-w-full" id="m-meal-save">Save Changes</button>
+  `);
+  document.getElementById('m-meal-save').addEventListener('click', ()=>{
+    const name = document.getElementById('m-meal-name').value.trim();
+    if (!name) return;
+    meal.name = name;
+    meal.notes = document.getElementById('m-meal-notes').value.trim() || null;
+    save(); closeModal(); renderGym();
+  });
+}
+
+function openAssignMealDayModal(dayKey){
+  const dayLabel = (PLAN_DAYS.find(d=>d.key===dayKey)||{}).label || dayKey;
+  const selected = new Set(state.mealPlan[dayKey] || []);
+  openModal(`Meals — ${dayLabel}`, `
+    ${state.mealLibrary.length===0 ? `<p class="muted italic text-sm">Add a meal to your library first.</p>` :
+      `<div class="chip-row" id="m-mealday-chips">${state.mealLibrary.map(m=>`<button type="button" class="chip${selected.has(m.id)?' chip-active':''}" data-meal-id="${m.id}">${esc(m.name)}</button>`).join('')}</div>`}
+    <button class="btn btn-default btn-w-full" id="m-mealday-save">Save</button>
+  `);
+  const chipsEl = document.getElementById('m-mealday-chips');
+  if (chipsEl){
+    chipsEl.addEventListener('click', e=>{
+      const btn = e.target.closest('[data-meal-id]'); if (!btn) return;
+      const id = parseInt(btn.dataset.mealId,10);
+      if (selected.has(id)) selected.delete(id); else selected.add(id);
+      btn.classList.toggle('chip-active', selected.has(id));
+    });
+  }
+  document.getElementById('m-mealday-save').addEventListener('click', ()=>{
+    state.mealPlan[dayKey] = Array.from(selected);
+    save(); closeModal(); renderGym();
+  });
+}
+
+function openEditGymPlanDayModal(dayKey){
+  const dayLabel = (PLAN_DAYS.find(d=>d.key===dayKey)||{}).label || dayKey;
+  const day = state.gymPlan[dayKey] || { split:null, exercises:[] };
+  let exList = day.exercises.slice();
+  const renderExList = () => {
+    const el = document.getElementById('m-gp-exlist');
+    el.innerHTML = exList.length===0 ? `<p class="muted italic text-sm">No exercises planned.</p>` :
+      exList.map((name,i)=>`<div class="row between" style="padding:0.4rem 0.75rem;border-radius:0.5rem;background:hsl(var(--card)/0.3);border:1px solid hsl(var(--border));">
+        <p class="text-sm">${esc(name)}</p>
+        <button class="btn btn-icon btn-ghost" data-remove-ex="${i}" style="color:hsl(var(--muted-foreground));">🗑</button>
+      </div>`).join('');
+    el.querySelectorAll('[data-remove-ex]').forEach(b=>b.addEventListener('click', ()=>{
+      exList.splice(parseInt(b.dataset.removeEx,10),1);
+      renderExList();
+    }));
+  };
+  openModal(`Gym Plan — ${dayLabel}`, `
+    <div class="field"><label class="label">Split Label</label><input class="input" id="m-gp-split" placeholder="e.g. Push, Pull, Legs, Rest…" value="${esc(day.split||'')}"/></div>
+    <div class="field"><label class="label">Planned Exercises</label>
+      <div class="row row-gap-2">
+        <input class="input flex-1" id="m-gp-ex-name" list="gp-ex-names" placeholder="e.g. Bench Press"/>
+        <datalist id="gp-ex-names">${state.exercises.map(e=>`<option value="${esc(e.name)}"></option>`).join('')}</datalist>
+        <button class="btn btn-outline btn-sm" id="m-gp-ex-add" type="button">+ Add</button>
+      </div>
+    </div>
+    <div class="stack-2" id="m-gp-exlist"></div>
+    <button class="btn btn-default btn-w-full" id="m-gp-save">Done</button>
+  `);
+  renderExList();
+  document.getElementById('m-gp-ex-add').addEventListener('click', ()=>{
+    const nameInput = document.getElementById('m-gp-ex-name');
+    const name = nameInput.value.trim();
+    if (!name) return;
+    exList.push(name);
+    nameInput.value = '';
+    renderExList();
+  });
+  document.getElementById('m-gp-save').addEventListener('click', ()=>{
+    const split = document.getElementById('m-gp-split').value.trim() || null;
+    state.gymPlan[dayKey] = { split, exercises: exList };
+    save(); closeModal(); renderGym();
+  });
+}
+
+function openLogFoodModal(){
+  let rating = 'good';
+  openModal('Log Food', `
+    <div class="field"><label class="label">Food / Meal</label><input class="input" id="m-diet-food" placeholder="e.g. Chicken and rice…"/></div>
+    <div class="field"><label class="label">Rating</label>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:0.5rem;" id="m-diet-ratings">
+        ${Object.keys(RATING_CONFIG).map(r=>`<button type="button" class="btn btn-sm" data-rating="${r}" style="border:1px solid ${RATING_CONFIG[r].border};background:${r==='good'?RATING_CONFIG[r].bg:'transparent'};color:${RATING_CONFIG[r].fg};">${RATING_CONFIG[r].label}</button>`).join('')}
+      </div>
+    </div>
+    <button class="btn btn-default btn-w-full" id="m-diet-save">Log It</button>
+  `);
+  document.getElementById('m-diet-ratings').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-rating]'); if (!btn) return;
+    rating = btn.dataset.rating;
+    document.querySelectorAll('#m-diet-ratings [data-rating]').forEach(b=>{
+      const cfg = RATING_CONFIG[b.dataset.rating];
+      b.style.background = (b.dataset.rating===rating) ? cfg.bg : 'transparent';
+    });
+  });
+  document.getElementById('m-diet-save').addEventListener('click', ()=>{
+    const food = document.getElementById('m-diet-food').value.trim();
+    if (!food) return;
+    state.diet.push({ id: nextId(), food, rating, loggedAt: new Date().toISOString() });
+    save(); closeModal(); renderGym();
+  });
+}
+
+function renderPreCheckin(content){
+  let motivation = null;
+  content.innerHTML = `
+    <div class="stack-8 fade-in gym-page">
+      <div><button class="btn btn-ghost btn-sm" id="pc-back">‹ Back</button></div>
+      <div><h1 class="h1">Pre-Session Check-in</h1><p class="muted mt-1">How are you walking in today?</p></div>
+      <div class="stack-3">
+        <p class="uppercase-label">Motivation Level</p>
+        <div class="stack-2" id="pc-motivation">
+          ${MOTIVATION.map(m=>`<button type="button" class="list-card" data-mot="${m.v}"><span style="font-size:1.4rem;">${m.emoji}</span><span style="font-weight:500;">${m.label}</span></button>`).join('')}
+        </div>
+      </div>
+      <div class="field"><label class="label uppercase-label">What's on your mind? (optional)</label><textarea class="textarea" id="pc-notes" placeholder="Anything pulling at you today? Distractions, worries, low energy…"></textarea></div>
+      <button class="btn btn-default btn-lg btn-w-full" id="pc-start" disabled>▶ Let's Go</button>
+    </div>`;
+  document.getElementById('pc-back').addEventListener('click', ()=>{ gymView={type:'hub'}; renderGym(); });
+  document.getElementById('pc-motivation').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-mot]'); if (!btn) return;
+    motivation = parseInt(btn.dataset.mot,10);
+    document.querySelectorAll('#pc-motivation [data-mot]').forEach(b=>{
+      const active = parseInt(b.dataset.mot,10)===motivation;
+      b.style.background = active ? 'hsl(var(--primary)/0.1)' : '';
+      b.style.borderColor = active ? 'hsl(var(--primary))' : '';
+    });
+    document.getElementById('pc-start').disabled = false;
+  });
+  document.getElementById('pc-start').addEventListener('click', ()=>{
+    if (!motivation) return;
+    const session = { id: nextId(), preMotivation: motivation, preNotes: document.getElementById('pc-notes').value.trim() || null, startedAt: new Date().toISOString(), endedAt: null, exercises: [] };
+    state.gymSessions.push(session);
+    save();
+    gymView = { type:'active-session', sessionId: session.id };
+    renderGym();
+  });
+}
+
+function renderActiveSession(content){
+  const session = state.gymSessions.find(s=>s.id===gymView.sessionId);
+  if (!session){ gymView={type:'hub'}; return renderGym(); }
+  const pm = motivationFor(session.preMotivation);
+  const exerciseNames = state.exercises.map(e=>e.name);
+
+  function draw(){
+    const elapsed = durationStrict(Date.now() - new Date(session.startedAt));
+    content.innerHTML = `
+      <div class="stack-6 fade-in gym-page">
+        <div class="row between">
+          <button class="btn btn-ghost btn-sm" id="as-back">‹ Hub</button>
+          <div class="row row-gap-2 muted text-xs">⏱ <span id="as-elapsed">${elapsed}</span></div>
+        </div>
+        <div class="row row-gap-3 card-faint" style="padding:0.75rem 1rem;">
+          <span style="font-size:1.5rem;">${pm.emoji}</span>
+          <div><p class="text-xs muted" style="text-transform:uppercase;letter-spacing:0.05em;">Walked in as</p><p style="font-weight:600;">${pm.label}</p></div>
+          ${session.preNotes ? `<p class="text-xs muted italic" style="margin-left:0.5rem;">${esc(session.preNotes)}</p>` : ''}
+        </div>
+        <div>
+          <div class="row between" style="margin-bottom:0.75rem;">
+            <p class="uppercase-label">Exercises (${session.exercises.length})</p>
+            <button class="btn btn-outline btn-sm" id="as-log">+ Log Exercise</button>
+          </div>
+          <div class="stack-2" id="as-exercise-list"></div>
+        </div>
+        <div class="pt-4 border-t">
+          <button class="btn btn-destructive-outline btn-w-full" id="as-end">■ End Session</button>
+        </div>
+      </div>`;
+    drawExerciseList();
+    document.getElementById('as-back').addEventListener('click', ()=>{ gymView={type:'hub'}; renderGym(); });
+    document.getElementById('as-log').addEventListener('click', ()=>openLogSessionExercise(session, drawExerciseList));
+    document.getElementById('as-end').addEventListener('click', ()=>{
+      session.endedAt = new Date().toISOString();
+      save();
+      gymView = { type:'hub' };
+      renderGym();
+    });
+  }
+
+  function drawExerciseList(){
+    const list = document.getElementById('as-exercise-list');
+    document.querySelector('.row.between .uppercase-label') && (document.querySelector('.row.between .uppercase-label').textContent = `Exercises (${session.exercises.length})`);
+    if (!session.exercises.length){ list.innerHTML = `<p class="text-sm muted italic">No exercises logged yet — tap Log Exercise to start.</p>`; return; }
+    list.innerHTML = session.exercises.map(ex=>{
+      const mi = exMoodFor(ex.mood);
+      const details = [ex.sets && ex.sets+' sets', ex.reps && ex.reps+' reps', ex.weight && ex.weight+' kg'].filter(Boolean).join(' · ');
+      return `<div class="row row-gap-3 card-faint" style="padding:0.6rem 1rem;">
+        <span style="font-size:1.2rem;flex-shrink:0;">${mi.emoji}</span>
+        <div class="flex-1 min-w-0"><p class="text-sm trunc" style="font-weight:600;">${esc(ex.exerciseName)}</p><p class="text-xs muted">${details}${ex.notes?' — '+esc(ex.notes):''}</p></div>
+        <span class="text-xs" style="font-weight:600;color:${mi.color};flex-shrink:0;">${mi.label}</span>
+        <button class="btn btn-icon btn-ghost" data-remove-ex="${ex.id}" style="color:hsl(var(--muted-foreground));flex-shrink:0;">🗑</button>
+      </div>`;
+    }).join('');
+    if (session.exercises.length>=2){
+      const first = session.exercises[0].mood, last = session.exercises[session.exercises.length-1].mood;
+      const diff = last-first;
+      if (diff>1) list.innerHTML += `<div class="row row-gap-2" style="padding:0.5rem 1rem;border-radius:0.75rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);margin-top:0.6rem;"><span>📉</span><p class="text-xs" style="color:#f87171;">Motivation dropped during this session — you pushed through it.</p></div>`;
+      else if (diff<-1) list.innerHTML += `<div class="row row-gap-2" style="padding:0.5rem 1rem;border-radius:0.75rem;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);margin-top:0.6rem;"><span>🔥</span><p class="text-xs" style="color:#4ade80;">Motivation picked up as you went — great session.</p></div>`;
+    }
+    list.querySelectorAll('[data-remove-ex]').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        session.exercises = session.exercises.filter(x=>x.id!==parseInt(btn.dataset.removeEx,10));
+        save(); drawExerciseList();
+      });
+    });
+  }
+
+  draw();
+  clearGymTimer();
+  gymTimerHandle = setInterval(()=>{
+    const elEl = document.getElementById('as-elapsed');
+    if (!elEl){ clearGymTimer(); return; }
+    elEl.textContent = durationStrict(Date.now() - new Date(session.startedAt));
+  }, 10000);
+}
+
+function openLogSessionExercise(session, onSaved){
+  let mood = 2;
+  openModal('Log Exercise', `
+    <div class="field"><label class="label">Exercise</label><input class="input" id="m-log-name" list="ex-names" autofocus placeholder="e.g. Bench Press"/>
+      <datalist id="ex-names">${state.exercises.map(e=>`<option value="${esc(e.name)}"></option>`).join('')}</datalist>
+    </div>
+    <div class="grid-3">
+      <div class="field"><label class="label">Sets</label><input type="number" class="input" id="m-log-sets" placeholder="0"/></div>
+      <div class="field"><label class="label">Reps</label><input type="number" class="input" id="m-log-reps" placeholder="0"/></div>
+      <div class="field"><label class="label">kg</label><input type="number" class="input" id="m-log-weight" placeholder="0"/></div>
+    </div>
+    <div class="field"><label class="label">How did you feel?</label>
+      <div class="stack-2" id="m-log-mood">
+        ${EXERCISE_MOOD.map(m=>`<button type="button" class="list-card" data-mv="${m.v}" style="${m.v===2?'background:hsl(var(--primary)/0.1);border-color:hsl(var(--primary));':''}"><span>${m.emoji}</span><span class="text-sm" style="font-weight:500;">${m.label}</span></button>`).join('')}
+      </div>
+    </div>
+    <div class="field"><label class="label">Notes (optional)</label><input class="input" id="m-log-notes" placeholder="e.g. Dropped weight, lost focus…"/></div>
+    <button class="btn btn-default btn-w-full" id="m-log-save">Log It</button>
+  `);
+  document.getElementById('m-log-mood').addEventListener('click', e=>{
+    const btn = e.target.closest('[data-mv]'); if (!btn) return;
+    mood = parseInt(btn.dataset.mv,10);
+    document.querySelectorAll('#m-log-mood [data-mv]').forEach(b=>{
+      const active = parseInt(b.dataset.mv,10)===mood;
+      b.style.background = active ? 'hsl(var(--primary)/0.1)' : '';
+      b.style.borderColor = active ? 'hsl(var(--primary))' : '';
+    });
+  });
+  document.getElementById('m-log-save').addEventListener('click', ()=>{
+    const name = document.getElementById('m-log-name').value.trim();
+    if (!name) return;
+    session.exercises.push({
+      id: nextId(), exerciseName: name,
+      weight: parseFloat(document.getElementById('m-log-weight').value) || null,
+      reps: parseInt(document.getElementById('m-log-reps').value,10) || null,
+      sets: parseInt(document.getElementById('m-log-sets').value,10) || null,
+      mood, notes: document.getElementById('m-log-notes').value.trim() || null,
+      loggedAt: new Date().toISOString(),
+    });
+    save(); closeModal(); onSaved();
+  });
+}
+
+function renderSessionDetail(content){
+  const session = state.gymSessions.find(s=>s.id===gymView.sessionId);
+  if (!session){ gymView={type:'hub'}; return renderGym(); }
+  const pm = motivationFor(session.preMotivation);
+  const exercises = session.exercises || [];
+  const duration = session.endedAt ? durationStrict(new Date(session.endedAt)-new Date(session.startedAt)) : null;
+
+  let trend = '';
+  if (exercises.length>=2){
+    const diff = exercises[exercises.length-1].mood - exercises[0].mood;
+    if (diff>1) trend = `<div class="row row-gap-2" style="padding:0.5rem 1rem;border-radius:0.75rem;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);"><span>📉</span><p class="text-xs" style="color:#f87171;">Motivation dropped during this session.</p></div>`;
+    else if (diff<-1) trend = `<div class="row row-gap-2" style="padding:0.5rem 1rem;border-radius:0.75rem;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);"><span>🔥</span><p class="text-xs" style="color:#4ade80;">Motivation improved through the session.</p></div>`;
+  }
+
+  content.innerHTML = `
+    <div class="stack-6 fade-in gym-page">
+      <div class="row between">
+        <button class="btn btn-ghost btn-sm" id="sd-back">‹ Back</button>
+        <button class="btn btn-icon btn-ghost" id="sd-delete" style="color:hsl(var(--muted-foreground));">🗑</button>
+      </div>
+      <div>
+        <h1 style="font-size:1.5rem;">${fmtDay(new Date(session.startedAt))}</h1>
+        ${duration ? `<p class="muted mt-1 text-sm">${duration} · ${exercises.length} exercise${exercises.length!==1?'s':''}</p>` : ''}
+      </div>
+      <div class="row row-gap-3 card-faint" style="padding:0.75rem 1rem;">
+        <span style="font-size:1.8rem;">${pm.emoji}</span>
+        <div><p class="text-xs muted" style="text-transform:uppercase;letter-spacing:0.05em;">Walked in as</p><p style="font-weight:600;">${pm.label}</p>${session.preNotes?`<p class="text-xs muted italic mt-1">${esc(session.preNotes)}</p>`:''}</div>
+      </div>
+      ${exercises.length===0 ? `<p class="text-sm muted italic">No exercises were logged in this session.</p>` : `
+      <div class="stack-2">
+        <p class="uppercase-label">Exercises</p>
+        ${exercises.map(ex=>{
+          const mi = exMoodFor(ex.mood);
+          const details = [ex.sets && ex.sets+' sets', ex.reps && ex.reps+' reps', ex.weight && ex.weight+' kg'].filter(Boolean).join(' · ');
+          return `<div class="row row-gap-3 card-faint" style="padding:0.6rem 1rem;">
+            <span style="font-size:1.2rem;flex-shrink:0;">${mi.emoji}</span>
+            <div class="flex-1 min-w-0"><p class="text-sm trunc" style="font-weight:600;">${esc(ex.exerciseName)}</p><p class="text-xs muted">${details}${ex.notes?' — '+esc(ex.notes):''}</p></div>
+            <span class="text-xs" style="font-weight:600;color:${mi.color};">${mi.label}</span>
+          </div>`;
+        }).join('')}
+        ${trend}
+      </div>`}
+    </div>`;
+  document.getElementById('sd-back').addEventListener('click', ()=>{ gymView={type:'hub'}; renderGym(); });
+  document.getElementById('sd-delete').addEventListener('click', ()=>{
+    state.gymSessions = state.gymSessions.filter(x=>x.id!==session.id);
+    save(); gymView={type:'hub'}; renderGym();
+  });
+}
+
+function renderExerciseDetail(content){
+  const ex = state.exercises.find(e=>e.id===gymView.exerciseId);
+  if (!ex){ gymView={type:'hub'}; return renderGym(); }
+  ex.pbHistory = ex.pbHistory || [];
+
+  function draw(){
+    const history = ex.pbHistory.slice().sort((a,b)=> new Date(b.achievedAt)-new Date(a.achievedAt));
+    content.innerHTML = `
+      <div class="stack-8 fade-in gym-page">
+        <div class="row between">
+          <button class="btn btn-ghost btn-sm" id="ed-back">‹ Back</button>
+          <button class="btn btn-icon btn-ghost" id="ed-delete" style="color:hsl(var(--muted-foreground));">🗑</button>
+        </div>
+        <div>
+          <div class="row row-gap-2" id="ed-name-row">
+            <h1 style="font-size:1.6rem;" id="ed-name-display">${esc(ex.name)}</h1>
+            <button class="btn btn-icon btn-ghost" id="ed-edit-name" style="color:hsl(var(--muted-foreground));">✎</button>
+          </div>
+          ${(ex.pbWeight||ex.pbReps) ? `<p class="muted mt-1">Current PB: ${ex.pbWeight?ex.pbWeight+' kg':'—'}${ex.pbReps?' × '+ex.pbReps+' reps':''}</p>` : ''}
+        </div>
+        <div>
+          <div class="row between" style="margin-bottom:0.5rem;">
+            <p class="uppercase-label">Notes</p>
+            <button class="btn btn-icon btn-ghost" id="ed-edit-notes" style="color:hsl(var(--muted-foreground));">✎</button>
+          </div>
+          <div id="ed-notes-area"><p class="text-sm muted italic">${ex.notes ? esc(ex.notes) : 'No notes yet — tap the pencil to add some.'}</p></div>
+        </div>
+        <div>
+          <div class="row between" style="margin-bottom:1rem;">
+            <p class="uppercase-label">PB History</p>
+            <button class="btn btn-outline btn-sm" id="ed-log-pb">+ Log PB</button>
+          </div>
+          <div class="stack-2">
+            ${history.length===0 ? `<p class="text-sm muted italic">No PB history yet.</p>` : history.map((r,idx)=>`
+              <div class="row between" style="padding:0.75rem 1rem;border-radius:0.75rem;border:1px solid ${idx===0?'rgba(234,179,8,.3)':'hsl(var(--border))'};background:${idx===0?'rgba(234,179,8,.1)':'hsl(var(--card)/0.3)'};">
+                <div class="row row-gap-3">
+                  ${idx===0 ? '<span>🏆</span>' : ''}
+                  <div><p class="text-sm" style="font-weight:600;">${r.pbWeight?r.pbWeight+' kg':'—'}${r.pbReps?' × '+r.pbReps+' reps':''}</p>${r.notes?`<p class="text-xs muted">${esc(r.notes)}</p>`:''}</div>
+                </div>
+                <p class="text-xs muted">${fmtDateOnly(new Date(r.achievedAt))}</p>
+              </div>`).join('')}
+          </div>
+        </div>
+      </div>`;
+
+    document.getElementById('ed-back').addEventListener('click', ()=>{ gymView={type:'hub'}; renderGym(); });
+    document.getElementById('ed-delete').addEventListener('click', ()=>{
+      state.exercises = state.exercises.filter(x=>x.id!==ex.id);
+      save(); gymView={type:'hub'}; renderGym();
+    });
+    document.getElementById('ed-edit-name').addEventListener('click', ()=>{
+      document.getElementById('ed-name-row').innerHTML = `
+        <input class="input" id="ed-name-input" value="${esc(ex.name)}" style="font-size:1.3rem;height:auto;padding:0.25rem 0;border:none;border-bottom:1px solid hsl(var(--border));border-radius:0;background:transparent;"/>
+        <button class="btn btn-icon btn-ghost" id="ed-name-save" style="color:#4ade80;">✓</button>
+        <button class="btn btn-icon btn-ghost" id="ed-name-cancel">✕</button>`;
+      const input = document.getElementById('ed-name-input'); input.focus();
+      const commit = ()=>{ const v=input.value.trim(); if (v){ ex.name=v; save(); } draw(); };
+      document.getElementById('ed-name-save').addEventListener('click', commit);
+      document.getElementById('ed-name-cancel').addEventListener('click', draw);
+      input.addEventListener('keydown', e=>{ if (e.key==='Enter') commit(); if (e.key==='Escape') draw(); });
+    });
+    document.getElementById('ed-edit-notes').addEventListener('click', ()=>{
+      document.getElementById('ed-notes-area').innerHTML = `
+        <textarea class="textarea" id="ed-notes-input" placeholder="Form cues, goals…">${esc(ex.notes||'')}</textarea>
+        <div class="row row-gap-2" style="margin-top:0.5rem;"><button class="btn btn-sm btn-default" id="ed-notes-save">Save</button><button class="btn btn-sm btn-ghost" id="ed-notes-cancel">Cancel</button></div>`;
+      document.getElementById('ed-notes-input').focus();
+      document.getElementById('ed-notes-save').addEventListener('click', ()=>{
+        ex.notes = document.getElementById('ed-notes-input').value.trim() || null;
+        save(); draw();
+      });
+      document.getElementById('ed-notes-cancel').addEventListener('click', draw);
+    });
+    document.getElementById('ed-log-pb').addEventListener('click', ()=>{
+      openModal('Log New PB — ' + ex.name, `
+        <div class="grid-2">
+          <div class="field"><label class="label">Weight (kg)</label><input type="number" class="input" id="m-pb-weight" placeholder="0"/></div>
+          <div class="field"><label class="label">Reps</label><input type="number" class="input" id="m-pb-reps" placeholder="0"/></div>
+        </div>
+        <div class="field"><label class="label">Date Achieved</label><input type="date" class="input" id="m-pb-date" value="${new Date().toISOString().slice(0,10)}"/></div>
+        <div class="field"><label class="label">Notes (optional)</label><input class="input" id="m-pb-notes" placeholder="e.g. Felt strong today"/></div>
+        <button class="btn btn-default btn-w-full" id="m-pb-save">Save PB</button>
+      `);
+      document.getElementById('m-pb-save').addEventListener('click', ()=>{
+        const w = parseFloat(document.getElementById('m-pb-weight').value) || null;
+        const r = parseInt(document.getElementById('m-pb-reps').value,10) || null;
+        const dateVal = document.getElementById('m-pb-date').value;
+        const record = { id: nextId(), pbWeight: w, pbReps: r, achievedAt: dateVal ? new Date(dateVal).toISOString() : new Date().toISOString(), notes: document.getElementById('m-pb-notes').value.trim() || null };
+        ex.pbHistory.push(record);
+        ex.pbWeight = w; ex.pbReps = r;
+        save(); closeModal(); draw();
+      });
+    });
+  }
+  draw();
+}
+
+/* ============================== [UI-BUDGET] ============================== */
+const MONTHLY_INCOME = 4455.38;
+const DEFAULT_CATEGORIES = [
+  { category:'RENT', budgetAmount:1560, sortOrder:0 }, { category:'FUEL', budgetAmount:200, sortOrder:1 },
+  { category:'GROCERIES', budgetAmount:300, sortOrder:2 }, { category:'TAKEAWAY', budgetAmount:120, sortOrder:3 },
+  { category:'HEALTH', budgetAmount:400, sortOrder:4 }, { category:'GYM', budgetAmount:64, sortOrder:5 },
+  { category:'BILL SAVING', budgetAmount:50, sortOrder:6 }, { category:'AMAYSIM', budgetAmount:20, sortOrder:7 },
+  { category:'FREMANTLE', budgetAmount:8, sortOrder:8 }, { category:'STORAGE', budgetAmount:7, sortOrder:9 },
+  { category:'STREAMING/MIC', budgetAmount:30, sortOrder:10 }, { category:'MEDICATION', budgetAmount:10, sortOrder:11 },
+  { category:'MISC.', budgetAmount:60, sortOrder:12 }, { category:'HOBBIES', budgetAmount:100, sortOrder:13 },
+  { category:'CAR REGO', budgetAmount:70, sortOrder:14 }, { category:'HEALTH INS', budgetAmount:68, sortOrder:15 },
+];
+let budgetDate = new Date();
+
+function seedMonthItems(month){
+  const priorMonths = Object.keys(state.budgetItems).filter(m=>m<month).sort().reverse();
+  let source = null;
+  for (const m of priorMonths){ if (state.budgetItems[m] && state.budgetItems[m].length){ source = state.budgetItems[m]; break; } }
+  let items;
+  if (source){
+    const seen = new Set();
+    items = source.filter(r=>{ if (seen.has(r.category)) return false; seen.add(r.category); return true; })
+      .map(r=>({ id: nextId(), category:r.category, budgetAmount:r.budgetAmount, spent:0, month, sortOrder:r.sortOrder }));
+  } else {
+    items = DEFAULT_CATEGORIES.map(c=>({ id: nextId(), category:c.category, budgetAmount:c.budgetAmount, spent:0, month, sortOrder:c.sortOrder }));
+  }
+  state.budgetItems[month] = items;
+  save();
+}
+function pctColor(pct){ if (pct>=100) return '#f87171'; if (pct>=80) return '#fb923c'; if (pct>=60) return '#facc15'; return '#4ade80'; }
+
+function renderBudget(){
+  const month = monthKey(budgetDate);
+  if (!state.budgetItems[month]) seedMonthItems(month);
+  const items = (state.budgetItems[month] || []).slice().sort((a,b)=>a.sortOrder-b.sortOrder);
+  const savings = state.budgetSavings.slice().sort((a,b)=>a.month.localeCompare(b.month));
+
+  const totalBudget = items.reduce((s,i)=>s+i.budgetAmount,0);
+  const totalSpent = items.reduce((s,i)=>s+i.spent,0);
+  const incomeRemaining = MONTHLY_INCOME - totalSpent;
+  const overallPct = totalBudget>0 ? (totalSpent/totalBudget*100) : 0;
+
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="stack-8 fade-in" style="margin-bottom:2rem;">
+      <header><h1 class="h1">Budget</h1><p class="muted mt-1">Track monthly spending against your budget.</p></header>
+
+      <div class="row between">
+        <button class="btn btn-ghost btn-sm" id="bm-prev">‹</button>
+        <h2 style="font-size:1.15rem;font-weight:600;">${fmtMonthYear(budgetDate)}</h2>
+        <button class="btn btn-ghost btn-sm" id="bm-next">›</button>
+      </div>
+
+      <div class="grid-4">
+        ${[
+          {label:'Income', value:MONTHLY_INCOME, color:'#60a5fa'},
+          {label:'Budget', value:totalBudget, color:''},
+          {label:'Spent', value:totalSpent, color: totalSpent>totalBudget?'#f87171':''},
+          {label:'Left', value:incomeRemaining, color: incomeRemaining<0?'#f87171':'#4ade80'},
+        ].map(c=>`<div class="card"><div class="card-content tight">
+          <p class="text-xs muted" style="text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.25rem;">${c.label}</p>
+          <p style="font-size:1.25rem;font-weight:700;font-family:var(--font-mono);${c.color?'color:'+c.color+';':''}">$${c.value.toFixed(0)}</p>
+        </div></div>`).join('')}
+      </div>
+
+      <div class="stack-2">
+        <div class="row between text-xs muted"><span>Overall budget used</span><span style="font-weight:600;color:${pctColor(overallPct)}">${overallPct.toFixed(0)}%</span></div>
+        <div class="progress"><div style="width:${Math.min(overallPct,100)}%;background:${pctColor(overallPct)}"></div></div>
+      </div>
+
+      <div>
+        <div class="row between" style="margin-bottom:1rem;">
+          <h3 style="font-size:1rem;font-weight:600;">Categories</h3>
+          <button class="btn btn-outline btn-sm" id="bg-add">+ Add</button>
+        </div>
+        <div style="border:1px solid hsl(var(--border));border-radius:var(--radius);overflow:hidden;">
+          <div style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:0.75rem;padding:0.6rem 1rem;background:hsl(var(--muted)/0.3);font-size:0.7rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:hsl(var(--muted-foreground));border-bottom:1px solid hsl(var(--border));">
+            <span>Category</span><span style="text-align:right;width:5rem;">Budget</span><span style="text-align:right;width:6rem;">Spent</span><span style="text-align:right;width:3rem;">%</span><span style="width:1.5rem;"></span>
+          </div>
+          <div id="budget-rows"></div>
+          <div style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:0.75rem;padding:0.75rem 1rem;background:hsl(var(--muted)/0.2);border-top:2px solid hsl(var(--border));">
+            <span style="font-weight:700;text-transform:uppercase;font-size:0.85rem;">Total</span>
+            <span style="text-align:right;width:5rem;font-weight:700;font-size:0.85rem;">$${totalBudget.toFixed(2)}</span>
+            <span style="text-align:right;width:6rem;font-weight:700;font-size:0.85rem;color:${pctColor(overallPct)}">$${totalSpent.toFixed(2)}</span>
+            <span style="text-align:right;width:3rem;font-weight:700;font-size:0.75rem;color:${pctColor(overallPct)}">${overallPct.toFixed(0)}%</span>
+            <span style="width:1.5rem;"></span>
+          </div>
+        </div>
+        <p class="text-xs muted" style="text-align:right;margin-top:0.5rem;">Remaining from income: <span style="font-weight:600;color:${incomeRemaining>=0?'#4ade80':'#f87171'}">$${incomeRemaining.toFixed(2)}</span></p>
+      </div>
+
+      <div class="pt-6 border-t">
+        <div class="row between" style="margin-bottom:1rem;">
+          <div class="row row-gap-2"><span style="color:#60a5fa;">📈</span><h3 style="font-size:1rem;font-weight:600;">Life Savings Tracker</h3></div>
+          <button class="btn btn-outline btn-sm" id="bg-savings-add">+ Log</button>
+        </div>
+        <div class="stack-2" id="savings-rows">
+          ${savings.length===0 ? `<p class="text-sm muted italic">No savings logged yet.</p>` : savings.map(row=>`
+            <div class="row between" style="padding:0.5rem 0.75rem;border-radius:0.6rem;background:hsl(var(--card)/0.3);border:1px solid hsl(var(--border));">
+              <div class="row row-gap-3"><span style="color:#60a5fa;">$</span><p class="text-sm" style="font-weight:500;">${fmtMonthYear(new Date(row.month+'-01T12:00:00'))}</p></div>
+              <div class="row row-gap-2"><span class="text-sm" style="font-weight:700;color:#4ade80;">$${row.amount.toFixed(0)}</span><button class="btn btn-icon btn-ghost" data-delete-savings="${row.id}" style="color:hsl(var(--muted-foreground));">🗑</button></div>
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>`;
+
+  document.getElementById('bm-prev').addEventListener('click', ()=>{ budgetDate = new Date(budgetDate.getFullYear(), budgetDate.getMonth()-1, 1); renderBudget(); });
+  document.getElementById('bm-next').addEventListener('click', ()=>{ budgetDate = new Date(budgetDate.getFullYear(), budgetDate.getMonth()+1, 1); renderBudget(); });
+  document.getElementById('bg-add').addEventListener('click', ()=>openAddCategoryModal(month));
+  document.getElementById('bg-savings-add').addEventListener('click', openAddSavingsModal);
+  document.querySelectorAll('[data-delete-savings]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.budgetSavings = state.budgetSavings.filter(x=>x.id!==parseInt(btn.dataset.deleteSavings,10));
+      save(); renderBudget();
+    });
+  });
+  renderBudgetRows(month);
+}
+
+function renderBudgetRows(month){
+  const rowsEl = document.getElementById('budget-rows');
+  const items = (state.budgetItems[month] || []).slice().sort((a,b)=>a.sortOrder-b.sortOrder);
+  rowsEl.innerHTML = items.map((item,idx)=>{
+    const pct = item.budgetAmount>0 ? (item.spent/item.budgetAmount*100) : 0;
+    return `<div style="display:grid;grid-template-columns:1fr auto auto auto auto;gap:0.75rem;padding:0.6rem 1rem;align-items:center;border-bottom:1px solid hsl(var(--border)/0.5);background:${idx%2===0?'hsl(var(--card)/0.2)':'hsl(var(--card)/0.4)'};" data-row="${item.id}">
+      <div class="min-w-0"><p class="text-sm trunc" style="font-weight:500;">${esc(item.category)}</p><div class="progress" style="margin-top:0.3rem;"><div style="width:${Math.min(pct,100)}%;background:${pctColor(pct)}"></div></div></div>
+      <div style="text-align:right;width:5rem;" class="cell-budget" data-field="budgetAmount" data-value="${item.budgetAmount}">${moneyCellHtml(item.budgetAmount)}</div>
+      <div style="text-align:right;width:6rem;" class="cell-spent" data-field="spent" data-value="${item.spent}">${moneyCellHtml(item.spent)}</div>
+      <div style="text-align:right;width:3rem;"><span class="text-xs" style="font-weight:700;color:${pctColor(pct)}">${pct.toFixed(0)}%</span></div>
+      <div style="width:1.5rem;text-align:right;"><button class="btn btn-icon btn-ghost" data-delete-item="${item.id}" style="color:hsl(var(--muted-foreground));">🗑</button></div>
+    </div>`;
+  }).join('');
+
+  rowsEl.querySelectorAll('.cell-budget, .cell-spent').forEach(cell=>{
+    cell.addEventListener('click', ()=>enterEditCell(cell, month));
+  });
+  rowsEl.querySelectorAll('[data-delete-item]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = parseInt(btn.dataset.deleteItem,10);
+      state.budgetItems[month] = state.budgetItems[month].filter(x=>x.id!==id);
+      save(); renderBudget();
+    });
+  });
+}
+function moneyCellHtml(v){ return `<button type="button" class="btn-ghost" style="background:none;border:none;color:inherit;font-size:0.875rem;font-weight:500;cursor:pointer;padding:0;">$${v.toFixed(2)} ✎</button>`; }
+
+function enterEditCell(cell, month){
+  const value = parseFloat(cell.dataset.value);
+  const field = cell.dataset.field;
+  const rowId = parseInt(cell.closest('[data-row]').dataset.row,10);
+  cell.innerHTML = `<div class="row row-gap-2" style="justify-content:flex-end;">
+    <input type="number" step="0.01" min="0" class="input input-sm" value="${value}" id="edit-input-${rowId}-${field}"/>
+    <button class="btn btn-icon btn-ghost" id="edit-ok-${rowId}-${field}" style="color:#4ade80;">✓</button>
+    <button class="btn btn-icon btn-ghost" id="edit-cancel-${rowId}-${field}">✕</button>
+  </div>`;
+  const input = document.getElementById(`edit-input-${rowId}-${field}`);
+  input.focus(); input.select();
+  const commit = ()=>{
+    const n = parseFloat(input.value);
+    if (!isNaN(n) && n>=0){
+      const item = state.budgetItems[month].find(x=>x.id===rowId);
+      item[field] = n;
+      save();
+    }
+    renderBudgetRows(month);
+    reflowBudgetTotals(month);
+  };
+  document.getElementById(`edit-ok-${rowId}-${field}`).addEventListener('click', commit);
+  document.getElementById(`edit-cancel-${rowId}-${field}`).addEventListener('click', ()=>renderBudgetRows(month));
+  input.addEventListener('keydown', e=>{ if (e.key==='Enter') commit(); if (e.key==='Escape') renderBudgetRows(month); });
+}
+function reflowBudgetTotals(month){ renderBudget(); }
+
+function openAddCategoryModal(month){
+  openModal('Add Category', `
+    <div class="field"><label class="label">Category Name</label><input class="input" id="m-cat-name" placeholder="e.g. EATING OUT"/></div>
+    <div class="field"><label class="label">Monthly Budget ($)</label><input type="number" class="input" id="m-cat-amount" placeholder="0.00"/></div>
+    <button class="btn btn-default btn-w-full" id="m-cat-save">Add Category</button>
+  `);
+  document.getElementById('m-cat-save').addEventListener('click', ()=>{
+    const name = document.getElementById('m-cat-name').value.trim();
+    const amt = parseFloat(document.getElementById('m-cat-amount').value);
+    if (!name || isNaN(amt)) return;
+    const items = state.budgetItems[month] || (state.budgetItems[month] = []);
+    items.push({ id: nextId(), category: name.toUpperCase(), budgetAmount: amt, spent:0, month, sortOrder: items.length+1 });
+    save(); closeModal(); renderBudget();
+  });
+}
+function openAddSavingsModal(){
+  openModal('Log Savings', `
+    <div class="field"><label class="label">Month (YYYY-MM)</label><input class="input" id="m-sav-month" value="${monthKey(new Date())}" placeholder="2026-05"/></div>
+    <div class="field"><label class="label">Amount Saved ($)</label><input type="number" class="input" id="m-sav-amount" placeholder="0.00"/></div>
+    <button class="btn btn-default btn-w-full" id="m-sav-save">Save</button>
+  `);
+  document.getElementById('m-sav-save').addEventListener('click', ()=>{
+    const m = document.getElementById('m-sav-month').value.trim();
+    const amt = parseFloat(document.getElementById('m-sav-amount').value);
+    if (!m || isNaN(amt)) return;
+    const existing = state.budgetSavings.find(x=>x.month===m);
+    if (existing) existing.amount = amt;
+    else state.budgetSavings.push({ id: nextId(), month:m, amount:amt });
+    save(); closeModal(); renderBudget();
+  });
+}
+
+/* ============================== [BOOT] ============================== */
+renderApp();
+if (!storageOk){
+  console.warn('localStorage is unavailable in this context — entries will not be saved between visits. Try serving this file over http:// or a different browser.');
+}
+</script>
+</body>
+</html>
