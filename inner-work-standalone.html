@@ -215,11 +215,12 @@ footer.app-footer{ text-align:center; padding:2rem 0 1rem; font-size:0.7rem; col
 </style>
 </head>
 <body>
-<div id="app">
+<div id="app" class="hidden">
   <aside class="sidebar">
     <div class="sidebar-header">
       <h1 class="sidebar-title">inner work</h1>
       <p class="sidebar-sub">your space to process — offline copy</p>
+      <div id="sidebar-account"></div>
     </div>
     <nav class="sidebar-nav" id="nav-desktop"></nav>
   </aside>
@@ -233,8 +234,18 @@ footer.app-footer{ text-align:center; padding:2rem 0 1rem; font-size:0.7rem; col
 
 <div id="modal-root"></div>
 <div id="sheet-root"></div>
+<div id="auth-gate" class="hidden"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
 <script>
+/* ============================== [SUPABASE INIT] ============================== */
+const SUPABASE_URL = 'https://pkylungddcizffdtnmhd.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_jw0reggu8JnnZaI1BtRe9g_vqGjh7u1';
+const sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let currentUserId = null;
+let authed = false;
+let pushTimer = null;
+
 /* ============================== [STATE] ============================== */
 const STORAGE_KEY = 'inner_work_state_v1';
 const DEFAULT_STATE = { seq: 1, mood: [], triggers: [], exercises: [], gymSessions: [], diet: [], budgetItems: {}, budgetSavings: [], hobbies: [], mealLibrary: [], mealPlan: {}, gymPlan: {} };
@@ -251,8 +262,33 @@ let state = loadState();
 function save(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch(e){ storageOk = false; }
+  schedulePush();
 }
 function nextId(){ const id = state.seq; state.seq += 1; return id; }
+
+async function pullState(userId){
+  try{
+    const { data, error } = await sbClient.from('inner_work_state').select('state').eq('user_id', userId).maybeSingle();
+    if (error){ console.warn('pullState failed', error); return; }
+    if (data && data.state){
+      state = Object.assign({}, DEFAULT_STATE, data.state);
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch(e){ storageOk = false; }
+    }
+  }catch(e){ console.warn('pullState error', e); }
+}
+
+function schedulePush(){
+  if (!currentUserId) return;
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(pushState, 800);
+}
+
+function pushState(){
+  if (!currentUserId) return;
+  sbClient.from('inner_work_state')
+    .upsert({ user_id: currentUserId, state, updated_at: new Date().toISOString() }, { onConflict: 'user_id' })
+    .then(({ error }) => { if (error) console.warn('sync push failed', error); });
+}
 
 function esc(str){
   return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -313,7 +349,7 @@ function renderApp(){
   const page = currentRoute();
   PAGES[page]();
 }
-window.addEventListener('hashchange', renderApp);
+window.addEventListener('hashchange', () => { if (authed) renderApp(); });
 
 /* ============================== [MODAL / SHEET HELPERS] ============================== */
 function escKeyClose(e){ if (e.key === 'Escape'){ closeModal(); closeSheet(); } }
@@ -335,6 +371,56 @@ function openSheet(bodyHtml){
   document.addEventListener('keydown', escKeyClose);
 }
 function closeSheet(){ document.getElementById('sheet-root').innerHTML=''; document.removeEventListener('keydown', escKeyClose); }
+
+/* ============================== [AUTH GATE] ============================== */
+let authGateEmail = '';
+
+function renderAuthGate(){
+  const root = document.getElementById('auth-gate');
+  root.innerHTML = `<div class="overlay"><div class="dialog">
+    <h3 class="dialog-title">Sign in to Inner Work</h3>
+    <div class="stack-4 pt-4">
+      <div class="field"><label class="label">Email</label><input type="email" class="input" id="ag-email" placeholder="you@example.com"/></div>
+      <p class="label hidden" id="ag-error" style="color:hsl(var(--destructive))"></p>
+      <button class="btn btn-default btn-w-full" id="ag-send">Send code</button>
+    </div>
+  </div></div>`;
+  document.getElementById('ag-send').addEventListener('click', authSendLink);
+}
+
+async function authSendLink(){
+  const email = document.getElementById('ag-email').value.trim();
+  const errEl = document.getElementById('ag-error');
+  errEl.classList.add('hidden');
+  if (!email) return;
+  const btn = document.getElementById('ag-send');
+  btn.disabled = true;
+  const redirectTo = window.location.href.split('#')[0].split('?')[0];
+  const { error } = await sbClient.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+  btn.disabled = false;
+  if (error){ errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
+  authGateEmail = email;
+  renderAuthCheckEmail();
+}
+
+function renderAuthCheckEmail(){
+  const root = document.getElementById('auth-gate');
+  root.innerHTML = `<div class="overlay"><div class="dialog">
+    <h3 class="dialog-title">Check your email</h3>
+    <div class="stack-4 pt-4">
+      <p class="label">We sent a sign-in link to ${esc(authGateEmail)}. Click it to finish signing in.</p>
+      <button class="btn btn-ghost btn-w-full" id="ag-back">Use a different email</button>
+    </div>
+  </div></div>`;
+  document.getElementById('ag-back').addEventListener('click', renderAuthGate);
+}
+
+function renderSidebarAccount(email){
+  const el = document.getElementById('sidebar-account');
+  if (!email){ el.innerHTML = ''; return; }
+  el.innerHTML = `<p class="sidebar-sub trunc">${esc(email)}</p><button class="btn btn-ghost btn-sm" id="btn-signout">Sign out</button>`;
+  document.getElementById('btn-signout').addEventListener('click', () => sbClient.auth.signOut());
+}
 
 /* ============================== [UI-MOOD] ============================== */
 const EMOTIONS = [
@@ -1634,7 +1720,44 @@ function openAddSavingsModal(){
 }
 
 /* ============================== [BOOT] ============================== */
-renderApp();
+function showApp(){
+  document.getElementById('auth-gate').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  authed = true;
+  renderApp();
+}
+function showAuthGate(){
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('auth-gate').classList.remove('hidden');
+  authed = false;
+  renderAuthGate();
+}
+
+sbClient.auth.onAuthStateChange((event, session) => {
+  if (event === 'SIGNED_IN' && session){
+    currentUserId = session.user.id;
+    renderSidebarAccount(session.user.email);
+    pullState(currentUserId).then(showApp);
+  } else if (event === 'SIGNED_OUT'){
+    currentUserId = null;
+    renderSidebarAccount(null);
+    showAuthGate();
+  }
+});
+
+async function boot(){
+  const { data: { session } } = await sbClient.auth.getSession();
+  if (session){
+    currentUserId = session.user.id;
+    renderSidebarAccount(session.user.email);
+    await pullState(currentUserId);
+    showApp();
+  } else {
+    showAuthGate();
+  }
+}
+boot();
+
 if (!storageOk){
   console.warn('localStorage is unavailable in this context — entries will not be saved between visits. Try serving this file over http:// or a different browser.');
 }
