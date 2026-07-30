@@ -1094,7 +1094,7 @@ function renderGymHub(content){
           return `<button class="list-card" data-gymplan-day="${d.key}">
             <div class="flex-1 min-w-0">
               <p class="text-sm" style="font-weight:500;">${d.label}${day.split?` — <span style="color:hsl(var(--primary));">${esc(day.split)}</span>`:''}</p>
-              <p class="text-xs muted trunc">${day.exercises.length ? esc(day.exercises.join(', ')) : (day.split ? 'No exercises planned' : 'Rest / not set')}</p>
+              ${day.exercises.length ? `<div class="text-xs muted" style="line-height:1.6;">${day.exercises.map(x=>esc(x)).join('<br>')}</div>` : `<p class="text-xs muted">${day.split ? 'No exercises planned' : 'Rest / not set'}</p>`}
             </div>
             <span class="muted">›</span>
           </button>`;
@@ -1164,7 +1164,7 @@ function renderGymHub(content){
             return `<button class="list-card" data-mealplan-day="${d.key}">
               <div class="flex-1 min-w-0">
                 <p class="text-sm" style="font-weight:500;">${d.label}</p>
-                <p class="text-xs muted trunc">${names.length ? esc(names.join(', ')) : 'No meals assigned'}</p>
+                ${names.length ? `<div class="text-xs muted" style="line-height:1.6;">${names.map(n=>esc(n)).join('<br>')}</div>` : `<p class="text-xs muted">No meals assigned</p>`}
               </div>
               <span class="muted">›</span>
             </button>`;
