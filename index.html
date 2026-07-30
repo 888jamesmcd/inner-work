@@ -373,46 +373,70 @@ function openSheet(bodyHtml){
 function closeSheet(){ document.getElementById('sheet-root').innerHTML=''; document.removeEventListener('keydown', escKeyClose); }
 
 /* ============================== [AUTH GATE] ============================== */
-let authGateEmail = '';
+let authGateMode = 'signin'; // 'signin' | 'signup'
 
 function renderAuthGate(){
   const root = document.getElementById('auth-gate');
+  const isSignup = authGateMode === 'signup';
   root.innerHTML = `<div class="overlay"><div class="dialog">
-    <h3 class="dialog-title">Sign in to Inner Work</h3>
+    <h3 class="dialog-title">${isSignup ? 'Create your account' : 'Sign in to Inner Work'}</h3>
     <div class="stack-4 pt-4">
       <div class="field"><label class="label">Email</label><input type="email" class="input" id="ag-email" placeholder="you@example.com"/></div>
+      <div class="field"><label class="label">Password</label><input type="password" class="input" id="ag-password" placeholder="••••••••"/></div>
       <p class="label hidden" id="ag-error" style="color:hsl(var(--destructive))"></p>
-      <button class="btn btn-default btn-w-full" id="ag-send">Send code</button>
+      <button class="btn btn-default btn-w-full" id="ag-submit">${isSignup ? 'Create account' : 'Sign in'}</button>
+      <button class="btn btn-ghost btn-w-full" id="ag-toggle">${isSignup ? 'Already have an account? Sign in' : 'Need an account? Sign up'}</button>
     </div>
   </div></div>`;
-  document.getElementById('ag-send').addEventListener('click', authSendLink);
+  const submit = isSignup ? authSignUp : authSignIn;
+  document.getElementById('ag-submit').addEventListener('click', submit);
+  document.getElementById('ag-password').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  document.getElementById('ag-toggle').addEventListener('click', () => {
+    authGateMode = isSignup ? 'signin' : 'signup';
+    renderAuthGate();
+  });
 }
 
-async function authSendLink(){
+async function authSignIn(){
   const email = document.getElementById('ag-email').value.trim();
+  const password = document.getElementById('ag-password').value;
   const errEl = document.getElementById('ag-error');
   errEl.classList.add('hidden');
-  if (!email) return;
-  const btn = document.getElementById('ag-send');
+  if (!email || !password) return;
+  const btn = document.getElementById('ag-submit');
   btn.disabled = true;
-  const redirectTo = window.location.href.split('#')[0].split('?')[0];
-  const { error } = await sbClient.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+  const { error } = await sbClient.auth.signInWithPassword({ email, password });
   btn.disabled = false;
-  if (error){ errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
-  authGateEmail = email;
-  renderAuthCheckEmail();
+  if (error){ errEl.textContent = error.message; errEl.classList.remove('hidden'); }
 }
 
-function renderAuthCheckEmail(){
+async function authSignUp(){
+  const email = document.getElementById('ag-email').value.trim();
+  const password = document.getElementById('ag-password').value;
+  const errEl = document.getElementById('ag-error');
+  errEl.classList.add('hidden');
+  if (!email || !password) return;
+  if (password.length < 6){ errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.remove('hidden'); return; }
+  const btn = document.getElementById('ag-submit');
+  btn.disabled = true;
+  const { data, error } = await sbClient.auth.signUp({ email, password });
+  btn.disabled = false;
+  if (error){ errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
+  if (!data.session){
+    renderAuthCheckEmail(email);
+  }
+}
+
+function renderAuthCheckEmail(email){
   const root = document.getElementById('auth-gate');
   root.innerHTML = `<div class="overlay"><div class="dialog">
-    <h3 class="dialog-title">Check your email</h3>
+    <h3 class="dialog-title">Confirm your email</h3>
     <div class="stack-4 pt-4">
-      <p class="label">We sent a sign-in link to ${esc(authGateEmail)}. Click it to finish signing in.</p>
-      <button class="btn btn-ghost btn-w-full" id="ag-back">Use a different email</button>
+      <p class="label">We sent a confirmation link to ${esc(email)}. Click it, then come back and sign in with your password.</p>
+      <button class="btn btn-ghost btn-w-full" id="ag-back">Back to sign in</button>
     </div>
   </div></div>`;
-  document.getElementById('ag-back').addEventListener('click', renderAuthGate);
+  document.getElementById('ag-back').addEventListener('click', () => { authGateMode = 'signin'; renderAuthGate(); });
 }
 
 function renderSidebarAccount(email){
