@@ -501,6 +501,51 @@ async function authSetNewPassword(){
   showApp();
 }
 
+function getUrlTokenHash(){
+  const params = new URLSearchParams(window.location.search);
+  const token_hash = params.get('token_hash');
+  const type = params.get('type');
+  if (token_hash && type) return { token_hash, type };
+  return null;
+}
+
+function renderAuthConfirmLink(tokenInfo){
+  document.getElementById('app').classList.add('hidden');
+  const root = document.getElementById('auth-gate');
+  root.classList.remove('hidden');
+  const isRecovery = tokenInfo.type === 'recovery';
+  root.innerHTML = `<div class="overlay"><div class="dialog">
+    <h3 class="dialog-title">${isRecovery ? 'Reset your password' : 'Confirm your email'}</h3>
+    <div class="stack-4 pt-4">
+      <p class="label">Tap below to finish ${isRecovery ? 'resetting your password' : 'confirming your email'}.</p>
+      <p class="label hidden" id="ag-error" style="color:hsl(var(--destructive))"></p>
+      <button class="btn btn-default btn-w-full" id="ag-confirm-link">${isRecovery ? 'Reset password' : 'Confirm email'}</button>
+    </div>
+  </div></div>`;
+  document.getElementById('ag-confirm-link').addEventListener('click', () => authConfirmLink(tokenInfo));
+}
+
+async function authConfirmLink(tokenInfo){
+  const errEl = document.getElementById('ag-error');
+  errEl.classList.add('hidden');
+  const btn = document.getElementById('ag-confirm-link');
+  btn.disabled = true;
+  const { data, error } = await sbClient.auth.verifyOtp({ token_hash: tokenInfo.token_hash, type: tokenInfo.type });
+  btn.disabled = false;
+  history.replaceState({}, '', window.location.pathname);
+  if (error){ errEl.textContent = error.message + ' Request a new link and try again.'; errEl.classList.remove('hidden'); return; }
+  if (tokenInfo.type === 'recovery'){
+    inPasswordRecovery = true;
+    currentUserId = data.user.id;
+    renderSetNewPassword();
+  } else {
+    currentUserId = data.user.id;
+    renderSidebarAccount(data.user.email);
+    await pullState(currentUserId);
+    showApp();
+  }
+}
+
 function renderSidebarAccount(email){
   const el = document.getElementById('sidebar-account');
   if (!email){ el.innerHTML = ''; return; }
@@ -1840,6 +1885,11 @@ sbClient.auth.onAuthStateChange((event, session) => {
 });
 
 async function boot(){
+  const tokenInfo = getUrlTokenHash();
+  if (tokenInfo){
+    renderAuthConfirmLink(tokenInfo);
+    return;
+  }
   const { data: { session } } = await sbClient.auth.getSession();
   if (session){
     currentUserId = session.user.id;
