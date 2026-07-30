@@ -385,12 +385,16 @@ function renderAuthGate(){
       <div class="field"><label class="label">Password</label><input type="password" class="input" id="ag-password" placeholder="••••••••"/></div>
       <p class="label hidden" id="ag-error" style="color:hsl(var(--destructive))"></p>
       <button class="btn btn-default btn-w-full" id="ag-submit">${isSignup ? 'Create account' : 'Sign in'}</button>
+      ${isSignup ? '' : '<button class="btn btn-ghost btn-w-full" id="ag-forgot">Forgot password?</button>'}
       <button class="btn btn-ghost btn-w-full" id="ag-toggle">${isSignup ? 'Already have an account? Sign in' : 'Need an account? Sign up'}</button>
     </div>
   </div></div>`;
   const submit = isSignup ? authSignUp : authSignIn;
   document.getElementById('ag-submit').addEventListener('click', submit);
   document.getElementById('ag-password').addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  if (!isSignup){
+    document.getElementById('ag-forgot').addEventListener('click', authForgotPassword);
+  }
   document.getElementById('ag-toggle').addEventListener('click', () => {
     authGateMode = isSignup ? 'signin' : 'signup';
     renderAuthGate();
@@ -437,6 +441,64 @@ function renderAuthCheckEmail(email){
     </div>
   </div></div>`;
   document.getElementById('ag-back').addEventListener('click', () => { authGateMode = 'signin'; renderAuthGate(); });
+}
+
+async function authForgotPassword(){
+  const email = document.getElementById('ag-email').value.trim();
+  const errEl = document.getElementById('ag-error');
+  errEl.classList.add('hidden');
+  if (!email){ errEl.textContent = 'Enter your email above first.'; errEl.classList.remove('hidden'); return; }
+  const redirectTo = window.location.href.split('#')[0].split('?')[0];
+  const btn = document.getElementById('ag-forgot');
+  btn.disabled = true;
+  const { error } = await sbClient.auth.resetPasswordForEmail(email, { redirectTo });
+  btn.disabled = false;
+  if (error){ errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
+  renderAuthResetSent(email);
+}
+
+function renderAuthResetSent(email){
+  const root = document.getElementById('auth-gate');
+  root.innerHTML = `<div class="overlay"><div class="dialog">
+    <h3 class="dialog-title">Check your email</h3>
+    <div class="stack-4 pt-4">
+      <p class="label">We sent a password reset link to ${esc(email)}. Click it to set a new password.</p>
+      <button class="btn btn-ghost btn-w-full" id="ag-back">Back to sign in</button>
+    </div>
+  </div></div>`;
+  document.getElementById('ag-back').addEventListener('click', () => { authGateMode = 'signin'; renderAuthGate(); });
+}
+
+function renderSetNewPassword(){
+  document.getElementById('app').classList.add('hidden');
+  const root = document.getElementById('auth-gate');
+  root.classList.remove('hidden');
+  root.innerHTML = `<div class="overlay"><div class="dialog">
+    <h3 class="dialog-title">Set a new password</h3>
+    <div class="stack-4 pt-4">
+      <div class="field"><label class="label">New password</label><input type="password" class="input" id="ag-new-password" placeholder="••••••••"/></div>
+      <p class="label hidden" id="ag-error" style="color:hsl(var(--destructive))"></p>
+      <button class="btn btn-default btn-w-full" id="ag-set-password">Set password</button>
+    </div>
+  </div></div>`;
+  document.getElementById('ag-set-password').addEventListener('click', authSetNewPassword);
+  document.getElementById('ag-new-password').addEventListener('keydown', e => { if (e.key === 'Enter') authSetNewPassword(); });
+}
+
+async function authSetNewPassword(){
+  const password = document.getElementById('ag-new-password').value;
+  const errEl = document.getElementById('ag-error');
+  errEl.classList.add('hidden');
+  if (!password || password.length < 6){ errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.remove('hidden'); return; }
+  const btn = document.getElementById('ag-set-password');
+  btn.disabled = true;
+  const { data, error } = await sbClient.auth.updateUser({ password });
+  btn.disabled = false;
+  if (error){ errEl.textContent = error.message; errEl.classList.remove('hidden'); return; }
+  inPasswordRecovery = false;
+  renderSidebarAccount(data.user.email);
+  await pullState(currentUserId);
+  showApp();
 }
 
 function renderSidebarAccount(email){
@@ -1757,13 +1819,21 @@ function showAuthGate(){
   renderAuthGate();
 }
 
+let inPasswordRecovery = false;
+
 sbClient.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' && session){
+  if (event === 'PASSWORD_RECOVERY' && session){
+    inPasswordRecovery = true;
+    currentUserId = session.user.id;
+    renderSetNewPassword();
+  } else if (event === 'SIGNED_IN' && session){
+    if (inPasswordRecovery) return;
     currentUserId = session.user.id;
     renderSidebarAccount(session.user.email);
     pullState(currentUserId).then(showApp);
   } else if (event === 'SIGNED_OUT'){
     currentUserId = null;
+    inPasswordRecovery = false;
     renderSidebarAccount(null);
     showAuthGate();
   }
