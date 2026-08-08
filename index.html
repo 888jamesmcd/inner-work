@@ -248,7 +248,7 @@ let pushTimer = null;
 
 /* ============================== [STATE] ============================== */
 const STORAGE_KEY = 'inner_work_state_v1';
-const DEFAULT_STATE = { seq: 1, mood: [], triggers: [], exercises: [], gymSessions: [], diet: [], budgetItems: {}, budgetSavings: [], hobbies: [], mealLibrary: [], mealPlan: {}, gymPlan: {} };
+const DEFAULT_STATE = { seq: 1, mood: [], triggers: [], exercises: [], gymSessions: [], diet: [], budgetItems: {}, budgetSavings: [], hobbies: [], mealLibrary: [], mealPlan: {}, gymPlan: {}, notes: [] };
 let storageOk = true;
 
 function loadState(){
@@ -320,9 +320,10 @@ const NAV_ITEMS = [
   { name:'Triggers', href:'#/triggers', icon:'🧠' },
   { name:'Health', href:'#/gym', icon:'🏋️' },
   { name:'Hobbies', href:'#/hobbies', icon:'🎮' },
+  { name:'Notes', href:'#/notes', icon:'📝' },
   { name:'Budget', href:'#/budget', icon:'💰' },
 ];
-const PAGES = { mood: renderMood, triggers: renderTriggers, gym: renderGym, budget: renderBudget, hobbies: renderHobbies };
+const PAGES = { mood: renderMood, triggers: renderTriggers, gym: renderGym, budget: renderBudget, hobbies: renderHobbies, notes: renderNotes };
 
 function currentRoute(){
   const h = location.hash.replace('#','').replace(/^\//,'') || 'mood';
@@ -988,6 +989,104 @@ function refreshHobbyHistory(){
       state.hobbies = state.hobbies.filter(x=>x.id!==parseInt(btn.dataset.deleteHobby,10));
       save();
       refreshHobbyHistory();
+    });
+  });
+}
+
+/* ============================== [UI-NOTES] ============================== */
+let notesEditingId = null;
+function renderNotes(){
+  notesEditingId = null;
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
+    <div class="stack-8 fade-in">
+      <header><h1 class="h1">Notes</h1><p class="muted mt-1">A place to write freely — no structure required.</p></header>
+      <div class="card">
+        <div class="card-header"><h3 class="card-title" style="font-size:1rem;">New Note</h3></div>
+        <div class="card-content stack-3">
+          <input class="input" id="note-title" placeholder="Title (optional)"/>
+          <textarea class="textarea" id="note-content" placeholder="Write anything..." style="min-height:140px;"></textarea>
+          <button class="btn btn-default btn-w-full" id="btn-save-note" disabled>+ Save Note</button>
+        </div>
+      </div>
+      <div class="stack-4">
+        <h2 style="font-size:1.25rem;">All Notes</h2>
+        <div id="notes-list" class="stack-3"></div>
+      </div>
+    </div>`;
+
+  document.getElementById('note-content').addEventListener('input', e=>{
+    document.getElementById('btn-save-note').disabled = !e.target.value.trim();
+  });
+  document.getElementById('btn-save-note').addEventListener('click', ()=>{
+    const contentVal = document.getElementById('note-content').value.trim();
+    if (!contentVal) return;
+    const now = new Date().toISOString();
+    state.notes.unshift({ id: nextId(), title: document.getElementById('note-title').value.trim() || null, content: contentVal, createdAt: now, updatedAt: now });
+    save();
+    document.getElementById('note-title').value = '';
+    document.getElementById('note-content').value = '';
+    document.getElementById('btn-save-note').disabled = true;
+    refreshNotesList();
+  });
+  refreshNotesList();
+}
+
+function refreshNotesList(){
+  const el = document.getElementById('notes-list');
+  const notes = state.notes.slice().sort((a,b)=> new Date(b.updatedAt)-new Date(a.updatedAt));
+  if (!notes.length){ el.innerHTML = `<p class="muted italic">No notes yet.</p>`; return; }
+  el.innerHTML = notes.map(note => note.id===notesEditingId ? `
+    <div class="card" style="border-color:hsl(var(--primary)/0.4);background:hsl(var(--card)/0.8);">
+      <div class="card-content tight stack-3">
+        <input class="input" id="edit-note-title-${note.id}" placeholder="Title (optional)" value="${esc(note.title||'')}"/>
+        <textarea class="textarea" id="edit-note-content-${note.id}" style="min-height:120px;">${esc(note.content)}</textarea>
+        <div class="row row-gap-2">
+          <button class="btn btn-sm btn-default" data-confirm-edit="${note.id}">✓ Save</button>
+          <button class="btn btn-sm btn-outline" data-cancel-edit="${note.id}">✕ Cancel</button>
+        </div>
+      </div>
+    </div>` : `
+    <div class="card-faint" style="padding:1rem;">
+      <div class="row between" style="align-items:flex-start;margin-bottom:0.5rem;">
+        <div>
+          ${note.title ? `<h3 class="text-sm" style="font-weight:600;margin-bottom:0.25rem;">${esc(note.title)}</h3>` : ''}
+          <p class="text-xs muted">${fmtShort(new Date(note.updatedAt))}</p>
+        </div>
+        <div class="row row-gap-2">
+          <button class="btn btn-icon btn-ghost" data-edit-note="${note.id}" style="color:hsl(var(--muted-foreground));">✎</button>
+          <button class="btn btn-icon btn-ghost" data-delete-note="${note.id}" style="color:hsl(var(--muted-foreground));">🗑</button>
+        </div>
+      </div>
+      <p class="text-sm" style="white-space:pre-wrap;line-height:1.5;">${esc(note.content)}</p>
+    </div>`
+  ).join('');
+
+  el.querySelectorAll('[data-edit-note]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ notesEditingId = parseInt(btn.dataset.editNote,10); refreshNotesList(); });
+  });
+  el.querySelectorAll('[data-cancel-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{ notesEditingId = null; refreshNotesList(); });
+  });
+  el.querySelectorAll('[data-confirm-edit]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = parseInt(btn.dataset.confirmEdit,10);
+      const note = state.notes.find(n=>n.id===id);
+      const newContent = document.getElementById(`edit-note-content-${id}`).value.trim();
+      if (!newContent) return;
+      note.title = document.getElementById(`edit-note-title-${id}`).value.trim() || null;
+      note.content = newContent;
+      note.updatedAt = new Date().toISOString();
+      save();
+      notesEditingId = null;
+      refreshNotesList();
+    });
+  });
+  el.querySelectorAll('[data-delete-note]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      state.notes = state.notes.filter(n=>n.id!==parseInt(btn.dataset.deleteNote,10));
+      save();
+      refreshNotesList();
     });
   });
 }
