@@ -290,6 +290,52 @@ function pushState(){
     .then(({ error }) => { if (error) console.warn('sync push failed', error); });
 }
 
+/* ============================== [DRAFTS] ==============================
+   Anything typed but not yet saved is mirrored to localStorage as you type, so
+   switching tabs, the machine sleeping, or the tab reloading can't eat your writing.
+   Kept out of `state` on purpose: drafts are per-device and shouldn't sync. */
+const DRAFT_KEY = 'inner_work_drafts_v1';
+let drafts = {};
+try{ drafts = JSON.parse(localStorage.getItem(DRAFT_KEY) || '{}') || {}; }catch(e){ drafts = {}; }
+let draftTimer = null;
+
+function writeDrafts(){
+  try{ localStorage.setItem(DRAFT_KEY, JSON.stringify(drafts)); }catch(e){}
+}
+function flushDrafts(){ clearTimeout(draftTimer); draftTimer = null; writeDrafts(); }
+function setDraft(key, value){
+  if (value === '' || value === null || value === undefined) delete drafts[key];
+  else drafts[key] = value;
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(writeDrafts, 250);
+}
+function getDraft(key, fallback){
+  return Object.prototype.hasOwnProperty.call(drafts, key) ? drafts[key] : fallback;
+}
+function clearDrafts(prefix){
+  Object.keys(drafts).forEach(k=>{ if (k === prefix || k.startsWith(prefix + '.')) delete drafts[k]; });
+  flushDrafts();
+}
+function restoreDrafts(root){
+  (root || document).querySelectorAll('[data-draft]').forEach(el=>{
+    const v = drafts[el.dataset.draft];
+    if (typeof v === 'string') el.value = v;
+  });
+}
+
+// One delegated listener covers every [data-draft] field on every page.
+document.addEventListener('input', e=>{
+  const el = e.target.closest && e.target.closest('[data-draft]');
+  if (el) setDraft(el.dataset.draft, el.value);
+});
+
+// Commit pending writes the moment the tab is backgrounded, slept, or torn down.
+document.addEventListener('visibilitychange', ()=>{
+  if (document.visibilityState === 'hidden'){ flushDrafts(); pushState(); }
+});
+window.addEventListener('pagehide', flushDrafts);
+window.addEventListener('beforeunload', flushDrafts);
+
 function esc(str){
   return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
@@ -571,7 +617,7 @@ let moodForm = null;
 function freshMoodForm(){ return { level:1, zone:null, zonePosition:50, emotions:[], part:null, isFinished:false, needsSomething:null }; }
 
 function renderMood(){
-  if (!moodForm) moodForm = freshMoodForm();
+  if (!moodForm) moodForm = getDraft('mood.form', null) || freshMoodForm();
   const f = moodForm;
   const content = document.getElementById('page-content');
   content.innerHTML = `
@@ -623,15 +669,16 @@ function renderMoodFormArea(){
               ${PARTS.map(p=>`<button type="button" class="btn ${f.part===p?'btn-default':'btn-outline'}" data-part="${p}">${p}</button>`).join('')}
             </div>
             <div id="part-fields" class="stack-4 pt-4 border-t ${f.part?'':'hidden'}">
-              <div class="field"><label class="label">Where am I?</label><input type="text" class="input" id="input-where" placeholder="e.g. Living room, coffee shop..."/></div>
-              <div class="field"><label class="label">What am I feeling &amp; why?</label><textarea class="textarea" id="input-feelings" placeholder="Write freely..."></textarea></div>
-              <div class="field"><label class="label">What am I doing for myself in this moment?</label><textarea class="textarea" id="input-investing" placeholder="How can you invest in your future self right now?"></textarea></div>
+              <div class="field"><label class="label">Where am I?</label><input type="text" class="input" id="input-where" data-draft="mood.where" placeholder="e.g. Living room, coffee shop..."/></div>
+              <div class="field"><label class="label">What am I feeling &amp; why?</label><textarea class="textarea" id="input-feelings" data-draft="mood.feelings" placeholder="Write freely..."></textarea></div>
+              <div class="field"><label class="label">What am I doing for myself in this moment?</label><textarea class="textarea" id="input-investing" data-draft="mood.investing" placeholder="How can you invest in your future self right now?"></textarea></div>
             </div>
             <button type="button" class="btn btn-default btn-w-full" id="btn-save-checkin">Save Check-In</button>
           </div>
         </div>
       </div>`;
     attachMoodFormListeners();
+    restoreDrafts(area);
   } else {
     area.innerHTML = renderMoodFinished();
     attachMoodFinishedListeners();
@@ -649,6 +696,7 @@ function attachMoodFormListeners(){
     lbl.textContent = ZONE_LABELS[f.zone].label; lbl.style.color = ZONE_LABELS[f.zone].color; lbl.classList.remove('hidden');
     document.getElementById('quick-save-row').classList.remove('hidden');
     if (f.level===1){ f.level=2; document.getElementById('level2-card').classList.remove('hidden'); }
+    setDraft('mood.form', f);
   });
 
   document.getElementById('emotion-chips').addEventListener('click', e=>{
@@ -657,6 +705,7 @@ function attachMoodFormListeners(){
     if (f.emotions.includes(id)) f.emotions = f.emotions.filter(x=>x!==id); else f.emotions.push(id);
     btn.classList.toggle('chip-active');
     if (f.level===2){ f.level=3; document.getElementById('level3-card').classList.remove('hidden'); }
+    setDraft('mood.form', f);
   });
 
   document.getElementById('part-buttons').addEventListener('click', e=>{
@@ -668,6 +717,7 @@ function attachMoodFormListeners(){
       b.classList.toggle('btn-outline', b.dataset.part!==f.part);
     });
     document.getElementById('part-fields').classList.toggle('hidden', !f.part);
+    setDraft('mood.form', f);
   });
 
   document.getElementById('btn-quick-save').addEventListener('click', ()=>saveMoodEntry());
@@ -693,6 +743,7 @@ function saveMoodEntry(){
   };
   state.mood.unshift(entry);
   save();
+  clearDrafts('mood');
   f.isFinished = true;
   f.needsSomething = null;
   renderMoodFormArea();
@@ -823,7 +874,7 @@ function openMoodDetail(entry){
 /* ============================== [UI-TRIGGERS] ============================== */
 let triggerForm = { step:1 };
 function renderTriggers(){
-  triggerForm = { step:1 };
+  triggerForm = { step: getDraft('triggers.step', 1) };
   const content = document.getElementById('page-content');
   content.innerHTML = `
     <div class="stack-8 fade-in">
@@ -831,16 +882,16 @@ function renderTriggers(){
       <div class="stack-6">
         <div class="card">
           <div class="card-header"><h3 class="card-title" style="color:hsl(var(--primary));">1. Where am I? What has triggered me?</h3></div>
-          <div class="card-content"><textarea class="textarea" id="trig-where" placeholder="Describe the situation..."></textarea></div>
+          <div class="card-content"><textarea class="textarea" id="trig-where" data-draft="triggers.where" placeholder="Describe the situation..."></textarea></div>
         </div>
-        <div class="card fade-in hidden" id="trig-step2">
+        <div class="card fade-in ${triggerForm.step<2?'hidden':''}" id="trig-step2">
           <div class="card-header"><h3 class="card-title" style="color:hsl(var(--primary));">2. What is my distraction?</h3></div>
-          <div class="card-content"><textarea class="textarea" id="trig-distraction" placeholder="What are you doing or thinking to avoid the feeling?"></textarea></div>
+          <div class="card-content"><textarea class="textarea" id="trig-distraction" data-draft="triggers.distraction" placeholder="What are you doing or thinking to avoid the feeling?"></textarea></div>
         </div>
-        <div class="card fade-in hidden" id="trig-step3">
+        <div class="card fade-in ${triggerForm.step<3?'hidden':''}" id="trig-step3">
           <div class="card-header"><h3 class="card-title" style="color:hsl(var(--primary));">3. What is filling in the hole?</h3></div>
           <div class="card-content stack-4">
-            <textarea class="textarea" id="trig-hole" placeholder="What need is this pointing to? What is missing?"></textarea>
+            <textarea class="textarea" id="trig-hole" data-draft="triggers.hole" placeholder="What need is this pointing to? What is missing?"></textarea>
             <button class="btn btn-default btn-w-full" id="btn-save-trigger" disabled>Save Entry</button>
           </div>
         </div>
@@ -852,10 +903,10 @@ function renderTriggers(){
     </div>`;
 
   document.getElementById('trig-where').addEventListener('input', e=>{
-    if (triggerForm.step===1 && e.target.value.length>5){ triggerForm.step=2; document.getElementById('trig-step2').classList.remove('hidden'); }
+    if (triggerForm.step===1 && e.target.value.length>5){ triggerForm.step=2; document.getElementById('trig-step2').classList.remove('hidden'); setDraft('triggers.step', 2); }
   });
   document.getElementById('trig-distraction').addEventListener('input', e=>{
-    if (triggerForm.step===2 && e.target.value.length>5){ triggerForm.step=3; document.getElementById('trig-step3').classList.remove('hidden'); }
+    if (triggerForm.step===2 && e.target.value.length>5){ triggerForm.step=3; document.getElementById('trig-step3').classList.remove('hidden'); setDraft('triggers.step', 3); }
   });
   document.getElementById('trig-hole').addEventListener('input', e=>{
     document.getElementById('btn-save-trigger').disabled = !e.target.value.trim();
@@ -871,8 +922,11 @@ function renderTriggers(){
       createdAt: new Date().toISOString(),
     });
     save();
+    clearDrafts('triggers');
     renderTriggers();
   });
+  restoreDrafts(content);
+  document.getElementById('btn-save-trigger').disabled = !document.getElementById('trig-hole').value.trim();
   refreshTriggerHistory();
 }
 function refreshTriggerHistory(){
@@ -897,7 +951,9 @@ const HOBBIES = [
 ];
 let hobbiesUi = { selected:null, filter:null };
 function renderHobbies(){
-  hobbiesUi.selected = null;
+  hobbiesUi.selected = getDraft('hobbies.selected', null);
+  const sel = hobbiesUi.selected;
+  const selLabel = sel ? ((HOBBIES.find(h=>h.id===sel)||{}).label || sel) : '';
   const content = document.getElementById('page-content');
   content.innerHTML = `
     <div class="stack-8 fade-in">
@@ -908,12 +964,12 @@ function renderHobbies(){
           <div>
             <p class="text-sm muted" style="margin-bottom:0.75rem;">Which hobby?</p>
             <div class="chip-row" id="hobby-select">
-              ${HOBBIES.map(h=>`<button type="button" class="chip" data-hobby="${esc(h.id)}">${esc(h.label)}</button>`).join('')}
+              ${HOBBIES.map(h=>`<button type="button" class="chip${h.id===sel?' chip-active':''}" data-hobby="${esc(h.id)}">${esc(h.label)}</button>`).join('')}
             </div>
           </div>
-          <div id="hobby-journal-area" class="hidden fade-in stack-3">
-            <p class="text-sm" style="font-weight:500;" id="hobby-journal-label"></p>
-            <textarea class="textarea" id="hobby-journal" placeholder="What happened? How did it feel? Anything memorable..."></textarea>
+          <div id="hobby-journal-area" class="${sel?'':'hidden'} fade-in stack-3">
+            <p class="text-sm" style="font-weight:500;" id="hobby-journal-label">${sel?esc(selLabel)+' — write about it':''}</p>
+            <textarea class="textarea" id="hobby-journal" data-draft="hobbies.journal" placeholder="What happened? How did it feel? Anything memorable..."></textarea>
             <div class="row between">
               <p class="text-xs muted">${fmtDay(new Date())}</p>
               <button class="btn btn-default" id="btn-save-hobby" disabled>Save Entry</button>
@@ -937,6 +993,8 @@ function renderHobbies(){
     const btn = e.target.closest('[data-hobby]'); if (!btn) return;
     const id = btn.dataset.hobby;
     hobbiesUi.selected = (hobbiesUi.selected===id) ? null : id;
+    setDraft('hobbies.selected', hobbiesUi.selected);
+    clearDrafts('hobbies.journal'); // switching hobby clears the box, so drop its draft too
     document.querySelectorAll('#hobby-select [data-hobby]').forEach(b=>b.classList.toggle('chip-active', b.dataset.hobby===hobbiesUi.selected));
     const area = document.getElementById('hobby-journal-area');
     area.classList.toggle('hidden', !hobbiesUi.selected);
@@ -954,6 +1012,7 @@ function renderHobbies(){
     if (!journal || !hobbiesUi.selected) return;
     state.hobbies.unshift({ id: nextId(), hobby: hobbiesUi.selected, journal, createdAt: new Date().toISOString() });
     save();
+    clearDrafts('hobbies');
     renderHobbies();
   });
   document.getElementById('hobby-filters').addEventListener('click', e=>{
@@ -962,6 +1021,8 @@ function renderHobbies(){
     document.querySelectorAll('#hobby-filters [data-filter]').forEach(b=>b.classList.toggle('chip-active', (b.dataset.filter||null)===hobbiesUi.filter));
     refreshHobbyHistory();
   });
+  restoreDrafts(content);
+  document.getElementById('btn-save-hobby').disabled = !document.getElementById('hobby-journal').value.trim();
   refreshHobbyHistory();
 }
 function refreshHobbyHistory(){
@@ -1004,8 +1065,8 @@ function renderNotes(){
       <div class="card">
         <div class="card-header"><h3 class="card-title" style="font-size:1rem;">New Note</h3></div>
         <div class="card-content stack-3">
-          <input class="input" id="note-title" placeholder="Title (optional)"/>
-          <textarea class="textarea" id="note-content" placeholder="Write anything..." style="min-height:140px;"></textarea>
+          <input class="input" id="note-title" data-draft="notes.new.title" placeholder="Title (optional)"/>
+          <textarea class="textarea" id="note-content" data-draft="notes.new.content" placeholder="Write anything..." style="min-height:140px;"></textarea>
           <button class="btn btn-default btn-w-full" id="btn-save-note" disabled>+ Save Note</button>
         </div>
       </div>
@@ -1024,11 +1085,14 @@ function renderNotes(){
     const now = new Date().toISOString();
     state.notes.unshift({ id: nextId(), title: document.getElementById('note-title').value.trim() || null, content: contentVal, createdAt: now, updatedAt: now });
     save();
+    clearDrafts('notes.new');
     document.getElementById('note-title').value = '';
     document.getElementById('note-content').value = '';
     document.getElementById('btn-save-note').disabled = true;
     refreshNotesList();
   });
+  restoreDrafts(content);
+  document.getElementById('btn-save-note').disabled = !document.getElementById('note-content').value.trim();
   refreshNotesList();
 }
 
@@ -1039,8 +1103,8 @@ function refreshNotesList(){
   el.innerHTML = notes.map(note => note.id===notesEditingId ? `
     <div class="card" style="border-color:hsl(var(--primary)/0.4);background:hsl(var(--card)/0.8);">
       <div class="card-content tight stack-3">
-        <input class="input" id="edit-note-title-${note.id}" placeholder="Title (optional)" value="${esc(note.title||'')}"/>
-        <textarea class="textarea" id="edit-note-content-${note.id}" style="min-height:120px;">${esc(note.content)}</textarea>
+        <input class="input" id="edit-note-title-${note.id}" data-draft="notes.edit.${note.id}.title" placeholder="Title (optional)" value="${esc(note.title||'')}"/>
+        <textarea class="textarea" id="edit-note-content-${note.id}" data-draft="notes.edit.${note.id}.content" style="min-height:120px;">${esc(note.content)}</textarea>
         <div class="row row-gap-2">
           <button class="btn btn-sm btn-default" data-confirm-edit="${note.id}">✓ Save</button>
           <button class="btn btn-sm btn-outline" data-cancel-edit="${note.id}">✕ Cancel</button>
@@ -1066,7 +1130,7 @@ function refreshNotesList(){
     btn.addEventListener('click', ()=>{ notesEditingId = parseInt(btn.dataset.editNote,10); refreshNotesList(); });
   });
   el.querySelectorAll('[data-cancel-edit]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{ notesEditingId = null; refreshNotesList(); });
+    btn.addEventListener('click', ()=>{ clearDrafts('notes.edit.' + btn.dataset.cancelEdit); notesEditingId = null; refreshNotesList(); });
   });
   el.querySelectorAll('[data-confirm-edit]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
@@ -1078,17 +1142,21 @@ function refreshNotesList(){
       note.content = newContent;
       note.updatedAt = new Date().toISOString();
       save();
+      clearDrafts('notes.edit.' + id);
       notesEditingId = null;
       refreshNotesList();
     });
   });
   el.querySelectorAll('[data-delete-note]').forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      state.notes = state.notes.filter(n=>n.id!==parseInt(btn.dataset.deleteNote,10));
+      const id = parseInt(btn.dataset.deleteNote,10);
+      state.notes = state.notes.filter(n=>n.id!==id);
       save();
+      clearDrafts('notes.edit.' + id);
       refreshNotesList();
     });
   });
+  restoreDrafts(el);
 }
 
 /* ============================== [UI-GYM] ============================== */
@@ -1453,7 +1521,7 @@ function renderPreCheckin(content){
           ${MOTIVATION.map(m=>`<button type="button" class="list-card" data-mot="${m.v}"><span style="font-size:1.4rem;">${m.emoji}</span><span style="font-weight:500;">${m.label}</span></button>`).join('')}
         </div>
       </div>
-      <div class="field"><label class="label uppercase-label">What's on your mind? (optional)</label><textarea class="textarea" id="pc-notes" placeholder="Anything pulling at you today? Distractions, worries, low energy…"></textarea></div>
+      <div class="field"><label class="label uppercase-label">What's on your mind? (optional)</label><textarea class="textarea" id="pc-notes" data-draft="gym.pre.notes" placeholder="Anything pulling at you today? Distractions, worries, low energy…"></textarea></div>
       <button class="btn btn-default btn-lg btn-w-full" id="pc-start" disabled>▶ Let's Go</button>
     </div>`;
   document.getElementById('pc-back').addEventListener('click', ()=>{ gymView={type:'hub'}; renderGym(); });
@@ -1472,9 +1540,11 @@ function renderPreCheckin(content){
     const session = { id: nextId(), preMotivation: motivation, preNotes: document.getElementById('pc-notes').value.trim() || null, startedAt: new Date().toISOString(), endedAt: null, exercises: [] };
     state.gymSessions.push(session);
     save();
+    clearDrafts('gym.pre');
     gymView = { type:'active-session', sessionId: session.id };
     renderGym();
   });
+  restoreDrafts(content);
 }
 
 function renderActiveSession(content){
@@ -1711,14 +1781,15 @@ function renderExerciseDetail(content){
     });
     document.getElementById('ed-edit-notes').addEventListener('click', ()=>{
       document.getElementById('ed-notes-area').innerHTML = `
-        <textarea class="textarea" id="ed-notes-input" placeholder="Form cues, goals…">${esc(ex.notes||'')}</textarea>
+        <textarea class="textarea" id="ed-notes-input" data-draft="gym.exnotes.${ex.id}" placeholder="Form cues, goals…">${esc(ex.notes||'')}</textarea>
         <div class="row row-gap-2" style="margin-top:0.5rem;"><button class="btn btn-sm btn-default" id="ed-notes-save">Save</button><button class="btn btn-sm btn-ghost" id="ed-notes-cancel">Cancel</button></div>`;
+      restoreDrafts(document.getElementById('ed-notes-area'));
       document.getElementById('ed-notes-input').focus();
       document.getElementById('ed-notes-save').addEventListener('click', ()=>{
         ex.notes = document.getElementById('ed-notes-input').value.trim() || null;
-        save(); draw();
+        save(); clearDrafts('gym.exnotes.' + ex.id); draw();
       });
-      document.getElementById('ed-notes-cancel').addEventListener('click', draw);
+      document.getElementById('ed-notes-cancel').addEventListener('click', ()=>{ clearDrafts('gym.exnotes.' + ex.id); draw(); });
     });
     document.getElementById('ed-log-pb').addEventListener('click', ()=>{
       openModal('Log New PB — ' + ex.name, `
@@ -1972,6 +2043,14 @@ sbClient.auth.onAuthStateChange((event, session) => {
     renderSetNewPassword();
   } else if (event === 'SIGNED_IN' && session){
     if (inPasswordRecovery) return;
+    // Supabase re-emits SIGNED_IN whenever the tab regains focus or the token refreshes
+    // (e.g. after the machine wakes). Re-rendering then would wipe whatever is being typed,
+    // and re-pulling could overwrite local edits that haven't been pushed yet — so for the
+    // user who is already signed in, just refresh the sidebar and leave the page alone.
+    if (authed && currentUserId === session.user.id){
+      renderSidebarAccount(session.user.email);
+      return;
+    }
     currentUserId = session.user.id;
     renderSidebarAccount(session.user.email);
     pullState(currentUserId).then(showApp);
